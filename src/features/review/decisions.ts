@@ -1,0 +1,75 @@
+/*
+ * Logika keputusan PPIC atas rekomendasi sistem. Murni (tanpa React) supaya mudah dites.
+ * Tiga mode per bahan:
+ *  - ACCEPT   : pakai rekomendasi sistem apa adanya.
+ *  - EDIT     : PPIC mengisi kuantitas sendiri.
+ *  - REJECT_AI: tolak komponen prediksi AI. Kuantitas dihitung ulang tanpa prediksi AI
+ *               (kebutuhan pesanan + safety stock - stok), alasan wajib diisi, nilai awal AI tetap tampil.
+ * Backend tidak punya kolom khusus "tolak AI", jadi alasan dikirim lewat ppic_notes.
+ */
+export type Mode = 'ACCEPT' | 'EDIT' | 'REJECT_AI'
+export const REJECT_REASONS = [
+  'Stok fisik tidak sesuai',
+  'Prediksi tidak realistis',
+  'Ada informasi dari luar sistem',
+  'Lainnya',
+] as const
+
+export type Line = {
+  ingredientId: string
+  baseUnit: string
+  bomConfirmedNeed: number
+  aiAdditionalForecast: number
+  safetyStock: number
+  iotAvailableStock: number
+  stockStatus: 'FRESH' | 'STALE'
+  systemNetRecommendation: number
+}
+export type Decision = { mode: Mode; finalQty: number; note: string; rejectReason?: string }
+
+const r3 = (n: number) => Math.round(n * 1000) / 1000
+export const netWithoutAi = (l: Line) =>
+  Math.max(0, r3(l.bomConfirmedNeed + l.safetyStock - l.iotAvailableStock))
+
+export const initialDecision = (l: Line): Decision => ({
+  mode: 'ACCEPT',
+  finalQty: l.systemNetRecommendation,
+  note: '',
+})
+
+export function setMode(l: Line, d: Decision, mode: Mode, rejectReason?: string): Decision {
+  if (mode === 'ACCEPT') return { mode, finalQty: l.systemNetRecommendation, note: d.note }
+  if (mode === 'REJECT_AI') return { mode, finalQty: netWithoutAi(l), note: d.note, rejectReason }
+  return { mode, finalQty: d.finalQty, note: d.note }
+}
+
+/** Pesan galat per bahan. Kosong = siap disetujui. */
+export function validate(lines: Line[], ds: Record<string, Decision>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const l of lines) {
+    const d = ds[l.ingredientId]
+    if (!d) out[l.ingredientId] = 'Belum ada keputusan'
+    else if (!Number.isFinite(d.finalQty) || d.finalQty < 0)
+      out[l.ingredientId] = 'Kuantitas tidak boleh negatif'
+    else if (d.mode === 'REJECT_AI' && !d.rejectReason)
+      out[l.ingredientId] = 'Pilih alasan menolak AI'
+    else if (l.stockStatus === 'STALE' && !d.note.trim())
+      out[l.ingredientId] = 'Stok usang: catatan wajib diisi'
+  }
+  return out
+}
+
+export function toApproveItems(lines: Line[], ds: Record<string, Decision>) {
+  return lines.map((l) => {
+    const d = ds[l.ingredientId]
+    const notes = [d.mode === 'REJECT_AI' ? `[AI ditolak: ${d.rejectReason}]` : '', d.note.trim()]
+      .filter(Boolean)
+      .join(' ')
+    return {
+      ingredientId: l.ingredientId,
+      ppicFinalQty: d.finalQty,
+      unit: l.baseUnit,
+      ...(notes && { ppicNotes: notes }),
+    }
+  })
+}
