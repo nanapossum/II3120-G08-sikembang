@@ -7,15 +7,14 @@ import { errorMessage } from '@/api/errors'
 import { PageHead } from '@/components/layout/AppShell'
 import { Alert, Button, Card, Field, Input, Segmented, Select, Tag } from '@/components/ui'
 
-// TODO: ganti dengan GET /api/menus bila backend menyediakannya (kontrak Bab 9 belum punya endpoint menu).
 const MENU_OPTIONS = [
-  { id: 'MNU-W01', name: 'Paket prasmanan Nusantara A' },
-  { id: 'MNU-K02', name: 'Nasi kotak ayam bakar' },
-  { id: 'MNU-D03', name: 'Dessert box' },
+  { id: 'MNU-N01', name: 'Nasi putih' },
+  { id: 'MNU-A01', name: 'Ayam bakar' },
+  { id: 'MNU-S01', name: 'Sayur asem' },
 ]
 const CATEGORIES = [
-  { value: 'PRASMANAN_WEDDING', label: 'Prasmanan wedding' },
-  { value: 'PRASMANAN_NON_WEDDING', label: 'Prasmanan non-wedding' },
+  { value: 'PRASMANAN_WEDDING', label: 'Prasmanan Wedding' },
+  { value: 'PRASMANAN_NON_WEDDING', label: 'Prasmanan Non-Wedding' },
   { value: 'NASI_KOTAK', label: 'Nasi kotak' },
 ] as const
 
@@ -23,7 +22,7 @@ const schema = z.object({
   customerName: z.string().min(1, 'Nama pelanggan wajib diisi'),
   orderCategory: z.enum(['PRASMANAN_WEDDING', 'PRASMANAN_NON_WEDDING', 'NASI_KOTAK']),
   eventDate: z.string().min(1, 'Tanggal acara wajib diisi'),
-  eventLocation: z.string().optional(),
+  eventLocation: z.string().min(1, 'Lokasi acara wajib diisi'),
   items: z
     .array(
       z.object({
@@ -54,7 +53,11 @@ export function OrderFormPage() {
       orderCategory: 'PRASMANAN_WEDDING',
       eventDate: '',
       eventLocation: '',
-      items: [{ menuId: '', confirmedPortions: 0 }],
+      items: [
+        { menuId: 'MNU-N01', confirmedPortions: 500 },
+        { menuId: 'MNU-A01', confirmedPortions: 500 },
+        { menuId: 'MNU-S01', confirmedPortions: 500 },
+      ],
     },
   })
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -71,25 +74,28 @@ export function OrderFormPage() {
   return (
     <>
       <PageHead
-        title="Catat pesanan terkonfirmasi"
-        sub="Satu sumber data untuk semua divisi. Revisi diubah di sini, bukan lewat chat."
+        title="Catat Pesanan Terkonfirmasi"
+        sub="Masukkan detail pesanan yang sudah dikonfirmasi pelanggan."
       />
       <form
         onSubmit={handleSubmit((v) => save.mutate(v))}
-        className="flex items-start gap-5"
+        className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"
         noValidate
       >
-        <Card className="flex flex-1 flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Nama pelanggan" error={errors.customerName?.message}>
-              <Input aria-invalid={!!errors.customerName} {...register('customerName')} />
-            </Field>
-            <Field label="Tanggal acara" error={errors.eventDate?.message}>
-              <Input type="date" aria-invalid={!!errors.eventDate} {...register('eventDate')} />
-            </Field>
+        <Card className="flex min-w-0 flex-col gap-5">
+          <div>
+            <h2 className="mb-3 text-base font-bold">Informasi Pesanan</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Nama pelanggan" error={errors.customerName?.message}>
+                <Input aria-invalid={!!errors.customerName} {...register('customerName')} />
+              </Field>
+              <Field label="Tanggal acara" error={errors.eventDate?.message}>
+                <Input type="date" aria-invalid={!!errors.eventDate} {...register('eventDate')} />
+              </Field>
+            </div>
           </div>
           <div>
-            <span className="mb-1.5 block text-sm font-semibold">Kategori pesanan</span>
+            <span className="mb-1.5 block text-sm font-semibold">Kategori</span>
             <Controller
               control={control}
               name="orderCategory"
@@ -103,64 +109,113 @@ export function OrderFormPage() {
               )}
             />
           </div>
-          <Field label="Lokasi acara">
-            <Input {...register('eventLocation')} />
+          <Field label="Lokasi acara" error={errors.eventLocation?.message}>
+            <Input aria-invalid={!!errors.eventLocation} {...register('eventLocation')} />
           </Field>
           <div>
-            <h2 className="mb-2 text-base font-bold">Menu dan porsi</h2>
-            <div className="flex flex-col gap-2">
-              {fields.map((f, i) => (
-                <div key={f.id} className="flex items-start gap-2">
-                  <div className="flex-1">
-                    <Field
-                      label={i === 0 ? 'Menu' : 'Menu ' + (i + 1)}
-                      error={errors.items?.[i]?.menuId?.message}
-                    >
-                      <Select {...register(`items.${i}.menuId`)}>
-                        <option value="">Pilih menu</option>
-                        {MENU_OPTIONS.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className="w-32">
-                    <Field label="Porsi" error={errors.items?.[i]?.confirmedPortions?.message}>
-                      <Input
-                        type="number"
-                        min={1}
-                        {...register(`items.${i}.confirmedPortions`, { valueAsNumber: true })}
-                      />
-                    </Field>
-                  </div>
-                  <Button
-                    type="button"
-                    className="mt-7"
-                    onClick={() => remove(i)}
-                    disabled={fields.length === 1}
-                  >
-                    Hapus
-                  </Button>
-                </div>
-              ))}
+            <h2 className="mb-3 text-base font-bold">Menu Pesanan</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left">
+                <thead className="text-sm text-n-700">
+                  <tr>
+                    <th scope="col" className="pb-2 pr-3 font-semibold">
+                      Menu
+                    </th>
+                    <th scope="col" className="w-36 pb-2 pr-3 font-semibold">
+                      Porsi
+                    </th>
+                    <th scope="col" className="w-28 pb-2 font-semibold">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((f, i) => (
+                    <tr key={f.id} className="border-t border-n-100">
+                      <td className="py-2 pr-3 align-top">
+                        <Select
+                          aria-label={`Menu pesanan ${i + 1}`}
+                          aria-invalid={!!errors.items?.[i]?.menuId}
+                          {...register(`items.${i}.menuId`)}
+                        >
+                          <option value="">Pilih menu</option>
+                          {MENU_OPTIONS.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </Select>
+                        {errors.items?.[i]?.menuId?.message && (
+                          <p className="mt-1 text-xs font-semibold text-error-strong">
+                            {errors.items[i].menuId.message}
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 align-top">
+                        <Input
+                          aria-label={`Porsi menu ${i + 1}`}
+                          aria-invalid={!!errors.items?.[i]?.confirmedPortions}
+                          type="number"
+                          min={1}
+                          {...register(`items.${i}.confirmedPortions`, { valueAsNumber: true })}
+                        />
+                        {errors.items?.[i]?.confirmedPortions?.message && (
+                          <p className="mt-1 text-xs font-semibold text-error-strong">
+                            {errors.items[i].confirmedPortions.message}
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-2 align-top">
+                        <Button
+                          type="button"
+                          variant="danger"
+                          onClick={() => remove(i)}
+                          disabled={fields.length === 1}
+                          aria-label={`Hapus ${MENU_OPTIONS.find((m) => m.id === watch(`items.${i}.menuId`))?.name ?? `menu ${i + 1}`}`}
+                        >
+                          Hapus
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+            {errors.items?.root?.message && (
+              <p className="mt-2 text-xs font-semibold text-error-strong">
+                {errors.items.root.message}
+              </p>
+            )}
             <Button
               type="button"
               className="mt-3"
-              onClick={() => append({ menuId: '', confirmedPortions: 0 })}
+              onClick={() => append({ menuId: '', confirmedPortions: 500 })}
             >
               + Tambah menu
             </Button>
           </div>
         </Card>
-        <Card className="flex w-80 flex-col gap-3">
+        <Card className="flex flex-col gap-3 lg:sticky lg:top-5">
           <h2 className="text-base font-bold">Ringkasan</h2>
-          <p className="text-n-700">Total porsi</p>
-          <p className="font-display text-base font-bold">{total}</p>
-          <Tag tone="success">Terkonfirmasi</Tag>
-          <p className="text-xs text-n-700">Setelah disimpan, PPIC langsung melihat pesanan ini.</p>
+          <div>
+            <p className="text-sm text-n-700">Total porsi</p>
+            <p className="font-display text-base font-bold">{total.toLocaleString('id-ID')}</p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-n-700">Status</span>
+            <Tag tone={save.isSuccess ? 'success' : 'neutral'}>
+              {save.isSuccess ? 'Terkonfirmasi' : 'Siap disimpan'}
+            </Tag>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-n-700">Versi</span>
+            <span className="text-sm font-semibold">
+              {save.data ? `v${save.data.version}` : 'Versi baru'}
+            </span>
+          </div>
+          <p className="text-sm text-n-700">
+            Setelah disimpan, PPIC dapat menggunakan pesanan ini untuk menghitung kebutuhan bahan.
+          </p>
           {save.isSuccess && (
             <Alert tone="success" title="Pesanan tersimpan">
               Nomor {save.data.orderId}, versi {save.data.version}.
