@@ -1,0 +1,96 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f4f8f2"
+    primaryTextColor: "#203321"
+    primaryBorderColor: "#568052"
+    lineColor: "#526454"
+---
+erDiagram
+  direction LR
+  orders ||--|{ order_revisions : memiliki
+  order_revisions ||--o{ order_items : memuat
+  menus ||--o{ order_items : dipesan
+  menus ||--o{ bom_recipes : dirinci
+  ingredients ||--o{ bom_recipes : digunakan
+  ingredients ||..o{ devices : dipantau
+  devices |o..o{ iot_telemetry_logs : tercatat
+  ingredients |o..o{ iot_telemetry_logs : diukur
+  ingredients ||--o{ weekly_demand : direkap
+  ingredients ||--o{ feedback_evidence : direkonsiliasi
+  forecast_runs ||--o{ forecast_run_items : menghasilkan
+  ingredients ||--o{ forecast_run_items : diprediksi
+  forecast_runs |o..o{ shopping_lists : dirujuk
+  users |o..o{ shopping_lists : memvalidasi
+  shopping_lists ||--o{ shopping_list_items : memuat
+  ingredients ||--o{ shopping_list_items : direkomendasikan
+  orders {
+    varchar order_id PK
+  }
+  order_revisions {
+    varchar order_id PK,FK
+    int version PK
+  }
+  order_items {
+    varchar order_id PK,FK
+    int version PK,FK
+    varchar menu_id PK,FK
+  }
+  menus {
+    varchar menu_id PK
+  }
+  bom_recipes {
+    varchar menu_id PK,FK
+    varchar ingredient_id PK,FK
+    varchar bom_version PK
+  }
+  ingredients {
+    varchar ingredient_id PK
+    varchar base_unit
+  }
+  devices {
+    varchar sensor_id PK
+    varchar ingredient_id FK
+  }
+  iot_telemetry_logs {
+    varchar log_id PK
+    varchar registered_sensor_id FK
+    varchar ingredient_id FK
+    varchar base_unit FK
+  }
+  iot_telemetry_request_rejections {
+    varchar log_id PK
+  }
+  weekly_demand {
+    date week_start PK
+    varchar ingredient_id PK,FK
+    varchar base_unit FK
+  }
+  feedback_evidence {
+    date week_start PK
+    varchar ingredient_id PK,FK
+    datetime approved_at PK
+  }
+  forecast_runs {
+    varchar forecast_run_id PK
+  }
+  forecast_run_items {
+    varchar forecast_run_id PK,FK
+    varchar ingredient_id PK,FK
+    varchar base_unit FK
+  }
+  users {
+    varchar username PK
+  }
+  shopping_lists {
+    varchar list_id PK
+    varchar planning_period UK
+    varchar forecast_run_id FK
+    varchar validated_by FK
+  }
+  shopping_list_items {
+    varchar list_id PK,FK
+    varchar ingredient_id PK,FK
+    varchar base_unit FK
+  }

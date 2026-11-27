@@ -21,8 +21,8 @@ REST API backend  (atau MSW di api/mocks/ saat VITE_API_MODE=mock)
 
 1. Komponen di `features/` dan `components/` tidak pernah memanggil `fetch` dan tidak tahu nama
    atribut snake_case. Mereka memakai hook dari `api/queries.ts` atau service dari `api/services`.
-2. Bentuk data backend hanya didefinisikan di `api/contracts/index.ts`. Response divalidasi runtime
-   dengan Zod (`looseObject`, jadi atribut tambahan dari backend tidak memecahkan UI).
+2. Kontrak data divalidasi runtime dengan Zod. Skema draf mencakup komponen kalkulasi yang diperlukan
+   tabel PPIC. Skema daftar terkirim juga menerima proyeksi PFA dengan kuantitas final, satuan, dan nama.
 3. Logika keputusan bisnis di sisi UI (mis. tolak rekomendasi AI) ditulis sebagai fungsi murni di
    `features/*/decisions.ts` dan dites dengan Vitest.
 4. Semua warna, ukuran teks, dan radius berasal dari `styles/tokens.css`. Jangan menulis nilai
@@ -45,13 +45,25 @@ REST API backend  (atau MSW di api/mocks/ saat VITE_API_MODE=mock)
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | Marketing: catat pesanan | `POST /api/orders`                                                                                                       |
 | PPIC: perencanaan        | `GET /api/orders`, `GET /api/inventory/stock`, `POST /api/procurement/calculate`, `GET /api/shopping-lists?status=DRAFT` |
-| PPIC: tinjau dan setujui | `GET /api/shopping-lists?status=DRAFT`, `PATCH /api/shopping-lists/{id}/approve`, `POST /api/shopping-lists/{id}/send`   |
+| PPIC: tinjau dan setujui | `GET /api/shopping-lists` untuk draf dan daftar disetujui, `PATCH /api/shopping-lists/{id}/approve`, `POST /api/shopping-lists/{id}/send` |
 | PFA: permintaan masuk    | `GET /api/shopping-lists?status=SENT_TO_PFA`                                                                             |
 | Simulator demo           | `POST /api/iot/telemetry` (header `X-Device-Key`)                                                                        |
 
-`POST /api/ai/predict` dan `POST /api/shopping-lists` dipanggil antarlayanan oleh backend
-(`POST /procurement/calculate`), jadi UI tidak memanggilnya. `PUT /api/orders/{id}` sudah ada di
-`ordersApi.update` tetapi belum punya layar (lihat daftar TODO di README).
+Forecast dan penyimpanan draf dipanggil antarlayanan dari `POST /api/procurement/calculate`.
+`PUT /api/orders/{id}` tersedia melalui `ordersApi.update`, dan layar Marketing saat ini menyediakan
+formulir pencatatan pesanan.
+
+## Sesi dan alur live
+
+- Login mengirim kredensial ke `/api/auth/login`, menyimpan JWT per tab, lalu membaca otorisasi melalui
+  `/api/auth/me`. Reload memulihkan sesi melalui server. Logout dan sesi kedaluwarsa menghapus token
+  serta cache kueri identitas sebelumnya.
+- Mock memakai MSW dan pemilih peran demo. Saat origin dialihkan ke live, bootstrap melepaskan worker
+  MSW sebelum memuat UI dan menggunakan Vite proxy `/api` untuk FastAPI.
+- PPIC menyetujui draf sebelum mengirim. Daftar tervalidasi tetap dapat dikirim ulang setelah galat
+  jaringan atau reload. Jika seluruh kuantitas nol, halaman menampilkan status tanpa pengadaan.
+- PFA memakai satu respons daftar terkirim. Nama, satuan, kuantitas final positif, serta catatan item
+  yang diteruskan berasal dari proyeksi tersebut.
 
 ## Menolak rekomendasi AI
 

@@ -1,6 +1,7 @@
-/** Periode perencanaan = minggu ISO, contoh 2026-W48 (sesuai kontrak API). */
+/** Minggu ISO dihitung dari tanggal kalender WIB, sama dengan backend. */
 export function isoWeek(date = new Date()): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+  const d = new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()))
   const day = d.getUTCDay() || 7
   d.setUTCDate(d.getUTCDate() + 4 - day)
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))

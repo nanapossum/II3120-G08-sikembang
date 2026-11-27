@@ -5,5 +5,16 @@ dist
 *.local
 .DS_Store
 coverage
+.venv/
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+*.egg-info/
+ml/build/
+ml/generated/
+ml/artifacts/
+ml/runtime/
+firmware/esp32_scale/secrets.h
+.ai-context/
 .github/workflows/copilot-instructions.md
 docs/wireframe-spec.md

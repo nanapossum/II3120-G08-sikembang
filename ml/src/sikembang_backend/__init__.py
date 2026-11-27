@@ -1,0 +1,1 @@
+"""SiKembang backend modular monolith."""

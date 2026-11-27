@@ -12,7 +12,7 @@ export type OrderInput = {
 export type ApproveItem = {
   ingredientId: string
   ppicFinalQty: number
-  unit?: string
+  unit?: z.infer<typeof C.BaseUnit>
   ppicNotes?: string
 }
 
@@ -29,14 +29,25 @@ export const inventoryApi = {
   stock: () => request('GET', '/inventory/stock', C.StockRes),
 }
 export const procurementApi = {
-  calculate: (planningPeriod: string, includeForecast = true) =>
+  calculate: (planningPeriod: string, includeForecast: boolean) =>
     request('POST', '/procurement/calculate', C.CalculateRes, {
       body: { planningPeriod, includeForecast },
     }),
 }
 export const shoppingListsApi = {
-  byStatus: (status: z.infer<typeof C.ListStatus>, planningPeriod?: string) =>
-    request('GET', '/shopping-lists', C.ListsRes, { query: { status, planningPeriod } }),
+  forPeriod: async (planningPeriod: string) => {
+    // There is one list per period. Read states in transition order so a newer
+    // state can still be found if the list changes during the search.
+    for (const status of C.ListStatus.options) {
+      const { lists } = await request('GET', '/shopping-lists', C.ListsRes, {
+        query: { status, planningPeriod },
+      })
+      if (lists.length) return lists[0]
+    }
+    return null
+  },
+  sent: () =>
+    request('GET', '/shopping-lists', C.SentListsRes, { query: { status: 'SENT_TO_PFA' } }),
   approve: (listId: string, items: ApproveItem[], ppicNotes?: string) =>
     request('PATCH', `/shopping-lists/${listId}/approve`, C.ApproveRes, {
       body: { items, ppicNotes },
@@ -57,6 +68,7 @@ export const iotApi = {
   ) =>
     request('POST', '/iot/telemetry', C.TelemetryRes, {
       body: b,
+      auth: 'none',
       headers: { 'X-Device-Key': deviceKey },
     }),
 }

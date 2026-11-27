@@ -1,0 +1,15 @@
+flowchart TD
+    config["Seed 3120, katalog BOM, kalender"] --> orders["Histori order sintetis dan versi revisi"]
+    orders --> dataset["Dataset bahan × minggu ISO × cutoff"]
+    dataset --> features["Fitur as-of cutoff dan label dari pemenuhan final"]
+    features --> split["Split kronologis dan purge dua minggu batas"]
+    split --> baseline["Baseline nol dan median kausal"]
+    split --> selection["Fit train, pilih konfigurasi di validation"]
+    selection --> refit["Fit ulang train + validation berlabel tersedia"]
+    baseline --> test["Evaluasi pada 3.640 baris test yang sama"]
+    refit --> test
+    test --> artifact["Model UBJSON, manifest, prediksi, metrik dan grafik"]
+    classDef source fill:#eef7f5,stroke:#11645c,color:#172721
+    classDef result fill:#f7ebdf,stroke:#965319,color:#40230f
+    class config,orders source
+    class test,artifact result

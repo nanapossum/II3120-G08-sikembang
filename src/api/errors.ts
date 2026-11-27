@@ -1,3 +1,5 @@
+import { ZodError } from 'zod'
+
 /** Format galat kontrak: { error: { code, message, details } } */
 export class ApiError extends Error {
   constructor(
@@ -20,6 +22,13 @@ const FRIENDLY: Record<string, string> = {
   STALE_SENSOR_DATA: 'Data timbangan kedaluwarsa (lebih dari 5 menit).',
   NEGATIVE_VALUE: 'Nilai tidak boleh negatif.',
   UNIT_MISMATCH: 'Satuan tidak cocok dengan satuan dasar bahan.',
+  INCOMPLETE_ITEMS: 'Lengkapi keputusan untuk semua bahan dalam daftar.',
+  INSUFFICIENT_HISTORY:
+    'Riwayat pesanan belum cukup untuk prediksi AI. Anda dapat menghitung tanpa prediksi AI.',
+  MODEL_UNAVAILABLE: 'Model prediksi AI belum tersedia. Anda dapat menghitung tanpa prediksi AI.',
 }
-export const errorMessage = (e: unknown) =>
-  e instanceof ApiError ? (FRIENDLY[e.code] ?? e.message) : 'Terjadi kesalahan. Coba lagi.'
+export function errorMessage(e: unknown) {
+  if (e instanceof ApiError) return FRIENDLY[e.code] ?? e.message
+  if (e instanceof ZodError) return 'Format respons server tidak sesuai. Muat ulang dan coba lagi.'
+  return 'Terjadi kesalahan. Coba lagi.'
+}

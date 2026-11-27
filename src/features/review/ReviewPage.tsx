@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { keys, useLists, useStock } from '@/api/queries'
+import { usePlanningList } from '@/api/queries'
 import { shoppingListsApi } from '@/api/services'
 import { errorMessage } from '@/api/errors'
 import { PageHead } from '@/components/layout/AppShell'
@@ -32,10 +32,15 @@ import {
 
 export function ReviewPage() {
   const { period = '' } = useParams()
-  const lists = useLists('DRAFT', period)
-  const stock = useStock()
-  if (lists.isLoading || stock.isLoading) return <Spinner />
-  const list = lists.data?.lists[0]
+  const query = usePlanningList(period)
+  const list = query.data
+  if (query.isLoading || (query.isFetching && !list)) return <Spinner />
+  if (query.isError)
+    return (
+      <Alert tone="error" title="Daftar belanja gagal dimuat">
+        {errorMessage(query.error)}
+      </Alert>
+    )
   if (!list)
     return (
       <EmptyState title="Belum ada draf untuk periode ini">
@@ -44,52 +49,43 @@ export function ReviewPage() {
         </Link>
       </EmptyState>
     )
-  const names = Object.fromEntries((stock.data?.items ?? []).map((i) => [i.ingredientId, i.name]))
-  return (
-    <ReviewTable
-      key={list.listId}
-      listId={list.listId}
-      period={period}
-      names={names}
-      lines={list.items as unknown as Line[]}
-    />
-  )
+  return <ReviewTable key={list.listId} list={list} />
 }
 
-function ReviewTable({
-  listId,
-  period,
-  names,
-  lines,
-}: {
-  listId: string
-  period: string
-  names: Record<string, string>
-  lines: Line[]
-}) {
+type ShoppingList = NonNullable<ReturnType<typeof usePlanningList>['data']>
+
+function ReviewTable({ list }: { list: ShoppingList }) {
+  const { items: lines, listId, planningPeriod: period } = list
   const qc = useQueryClient()
   const [ds, setDs] = useState<Record<string, Decision>>(() =>
     Object.fromEntries(lines.map((l) => [l.ingredientId, initialDecision(l)])),
   )
   const [rejecting, setRejecting] = useState<string | 'ALL' | null>(null) // ingredientId atau 'ALL'
   const [reason, setReason] = useState('')
-  const [done, setDone] = useState<'sent' | 'nothing' | null>(null)
   const errors = validate(lines, ds)
   const staleCount = lines.filter((l) => l.stockStatus === 'STALE').length
+  const hasForecast = list.forecastRunId !== null
+  const canRejectAll = hasForecast && lines.every((l) => l.iotAvailableStock !== null)
 
-  const submit = useMutation({
-    mutationFn: async () => {
-      const res = await shoppingListsApi.approve(listId, toApproveItems(lines, ds))
-      if (!res.procurementRequired) return 'nothing' as const
-      await shoppingListsApi.send(listId)
-      return 'sent' as const
-    },
-    onSuccess: (r) => {
-      setDone(r)
-      void qc.invalidateQueries({ queryKey: ['lists'] })
-      void qc.invalidateQueries({ queryKey: keys.stock })
-    },
+  const refreshLists = () => {
+    void qc.invalidateQueries({ queryKey: ['lists'] })
+  }
+  const send = useMutation({
+    mutationFn: () => shoppingListsApi.send(listId),
+    onSettled: refreshLists,
   })
+  const approve = useMutation({
+    mutationFn: () => shoppingListsApi.approve(listId, toApproveItems(lines, ds)),
+    onSettled: refreshLists,
+  })
+  const submit = () => {
+    // Per-call callbacks run only while this review is still mounted.
+    approve.mutate(undefined, {
+      onSuccess: (approval) => {
+        if (approval.procurementRequired) send.mutate()
+      },
+    })
+  }
 
   const patch = (id: string, d: Decision) => setDs((s) => ({ ...s, [id]: d }))
   const onMode = (l: Line, m: Mode) =>
@@ -107,17 +103,41 @@ function ReviewTable({
     setRejecting(null)
   }
 
-  if (done)
+  const sent = send.isSuccess || list.status === 'SENT_TO_PFA'
+  const approved = approve.isSuccess || list.status === 'VALIDATED_BY_PPIC'
+  const needsProcurement = approve.data?.procurementRequired ?? list.procurementRequired
+  if (sent || approved)
     return (
       <Card className="mx-auto max-w-xl text-center">
-        <Alert
-          tone="success"
-          title={done === 'sent' ? 'Terkirim ke PFA' : 'Disetujui, tidak ada pembelian'}
-        >
-          {done === 'sent'
-            ? 'PFA dapat melihat dokumen permintaan bahan.'
-            : 'Semua kuantitas akhir 0, jadi tidak ada yang diteruskan.'}
-        </Alert>
+        {sent ? (
+          <Alert tone="success" title="Terkirim ke PFA">
+            PFA dapat melihat dokumen permintaan bahan.
+          </Alert>
+        ) : needsProcurement ? (
+          <>
+            {send.isError ? (
+              <Alert tone="error" title="Daftar belum terkirim ke PFA">
+                {errorMessage(send.error)}
+              </Alert>
+            ) : (
+              <Alert tone="info" title="Disetujui PPIC">
+                Daftar belanja siap dikirim ke PFA.
+              </Alert>
+            )}
+            <Button
+              className="mt-4 mr-3"
+              variant="primary"
+              disabled={send.isPending}
+              onClick={() => send.mutate()}
+            >
+              {send.isPending ? 'Mengirim' : 'Kirim ke PFA'}
+            </Button>
+          </>
+        ) : (
+          <Alert tone="success" title="Disetujui, tidak ada pembelian">
+            Semua kuantitas akhir 0, jadi tidak ada yang diteruskan.
+          </Alert>
+        )}
         <Link
           to="/ppic"
           className="mt-4 inline-flex min-h-11 items-center rounded-sm bg-n-100 px-5 font-semibold"
@@ -136,6 +156,7 @@ function ReviewTable({
           <div className="flex items-center gap-3">
             <Tag tone="warning">DRAFT</Tag>
             <Button
+              disabled={!canRejectAll || approve.isPending}
               onClick={() => {
                 setReason('')
                 setRejecting('ALL')
@@ -146,10 +167,14 @@ function ReviewTable({
           </div>
         }
       />
+      <p className="mb-4 text-sm text-n-700">
+        {list.forecastRunId ? `Prediksi AI ${list.forecastRunId}` : 'Perhitungan tanpa prediksi AI'}
+      </p>
       {staleCount > 0 && (
         <div className="mb-4">
           <Alert tone="warning">
-            {staleCount} bahan memakai stok usang. Isi catatan sebelum menyetujui.
+            {staleCount} bahan memakai stok usang. Isi catatan verifikasi stok fisik sebelum
+            menyetujui.
           </Alert>
         </div>
       )}
@@ -181,9 +206,7 @@ function ReviewTable({
               const u = l.baseUnit
               return (
                 <tr key={l.ingredientId} className="align-top odd:bg-n-50">
-                  <td className="px-2 py-3 font-semibold">
-                    {names[l.ingredientId] ?? l.ingredientId}
-                  </td>
+                  <td className="px-2 py-3 font-semibold">{l.name}</td>
                   <td className="px-2 py-3 text-right">{formatQty(l.bomConfirmedNeed, u)}</td>
                   <td
                     className={`px-2 py-3 text-right ${d.mode === 'REJECT_AI' ? 'text-n-500 line-through' : ''}`}
@@ -192,7 +215,9 @@ function ReviewTable({
                   </td>
                   <td className="px-2 py-3 text-right">{formatQty(l.safetyStock, u)}</td>
                   <td className="px-2 py-3 text-right">
-                    {formatQty(l.iotAvailableStock, u)}
+                    {l.iotAvailableStock === null
+                      ? 'Belum diketahui'
+                      : formatQty(l.iotAvailableStock, u)}
                     <div>
                       {l.stockStatus === 'STALE' ? (
                         <Tag tone="warning">Usang</Tag>
@@ -206,13 +231,15 @@ function ReviewTable({
                   </td>
                   <td className="px-2 py-3">
                     <Segmented
-                      label={`Keputusan ${names[l.ingredientId] ?? ''}`}
+                      label={`Keputusan ${l.name}`}
                       value={d.mode}
                       onChange={(m) => onMode(l, m)}
                       options={[
                         { value: 'ACCEPT', label: 'Terima' },
                         { value: 'EDIT', label: 'Ubah' },
-                        { value: 'REJECT_AI', label: 'Tolak AI' },
+                        ...(hasForecast && l.iotAvailableStock !== null
+                          ? [{ value: 'REJECT_AI' as const, label: 'Tolak AI' }]
+                          : []),
                       ]}
                     />
                     {d.mode === 'REJECT_AI' && (
@@ -226,8 +253,9 @@ function ReviewTable({
                       type="number"
                       min={0}
                       step="any"
-                      aria-label={`Qty final ${names[l.ingredientId] ?? ''}`}
-                      value={d.finalQty}
+                      aria-label={`Qty final ${l.name}`}
+                      value={Number.isNaN(d.finalQty) ? '' : d.finalQty}
+                      disabled={approve.isPending}
                       onChange={(e) =>
                         patch(l.ingredientId, {
                           ...d,
@@ -239,10 +267,11 @@ function ReviewTable({
                   </td>
                   <td className="w-56 px-2 py-3">
                     <Input
-                      aria-label={`Catatan ${names[l.ingredientId] ?? ''}`}
+                      aria-label={`Catatan ${l.name}`}
                       aria-invalid={!!err && err.includes('catatan')}
                       placeholder={l.stockStatus === 'STALE' ? 'Wajib diisi' : 'Opsional'}
                       value={d.note}
+                      disabled={approve.isPending}
                       onChange={(e) => patch(l.ingredientId, { ...d, note: e.target.value })}
                     />
                     {err && <p className="mt-1 text-xs font-semibold text-error-strong">{err}</p>}
@@ -257,10 +286,10 @@ function ReviewTable({
           Jika AI ditolak, prediksi AI tidak dihitung.
         </p>
       </Card>
-      {submit.isError && (
+      {approve.isError && (
         <div className="mt-4">
           <Alert tone="error" title="Belum bisa disetujui">
-            {errorMessage(submit.error)}
+            {errorMessage(approve.error)}
           </Alert>
         </div>
       )}
@@ -271,10 +300,10 @@ function ReviewTable({
         <Button
           variant="primary"
           size="lg"
-          disabled={Object.keys(errors).length > 0 || submit.isPending}
-          onClick={() => submit.mutate()}
+          disabled={Object.keys(errors).length > 0 || approve.isPending}
+          onClick={submit}
         >
-          {submit.isPending ? 'Mengirim' : 'Setujui dan kirim ke PFA'}
+          {approve.isPending ? 'Menyetujui' : 'Setujui dan kirim ke PFA'}
         </Button>
       </div>
 

@@ -1,0 +1,54 @@
+---
+config:
+  theme: base
+  sequence:
+    wrap: true
+    actorMargin: 28
+    messageMargin: 22
+  themeVariables:
+    actorBkg: "#f4f8f2"
+    actorBorder: "#568052"
+    actorTextColor: "#203321"
+    signalColor: "#526454"
+    noteBkgColor: "#f8f5ee"
+    noteBorderColor: "#b19762"
+---
+sequenceDiagram
+  actor M as Marketing
+  participant O as OrderService
+  participant DB as SQLite
+  participant I as InventoryIoTService
+  participant F as AIForecastService
+  participant C as ProcurementCalcService
+  participant S as ShoppingListService
+  actor P as PPIC
+  actor A as PFA
+  M->>O: Catat pesanan terkonfirmasi
+  O->>DB: Simpan pesanan dan revisi 1
+  M->>O: Revisi dengan nomor versi saat ini
+  O->>DB: Tambah revisi dan item baru
+  Note over DB,I: Perangkat atau simulator mengirim pembacaan
+  I->>DB: Catat telemetri dan perbarui stok
+  P->>C: Hitung kebutuhan untuk minggu ISO
+  C->>O: Jumlahkan BOM revisi yang terlihat
+  O->>DB: Baca order, revisi, dan resep
+  C->>I: Baca stok dan status kesegaran
+  I->>DB: Baca inventori
+  opt include_forecast bernilai true
+    C->>F: Prediksi permintaan tambahan
+    F->>DB: Baca lag dan feedback yang tersedia
+    F-->>C: Kuantitas tambahan per bahan
+  end
+  C->>S: Isi draf melalui DraftService
+  S->>DB: Persist draf dan item
+  C-->>P: Rekomendasi bersih dan peringatan
+  P->>S: Approve dengan kuantitas final
+  S->>DB: VALIDATED_BY_PPIC
+  alt Ada kuantitas final positif
+    P->>S: Send
+    S->>DB: SENT_TO_PFA
+    A->>S: Baca daftar terkirim
+    S-->>A: Item dengan kuantitas final positif
+  else Seluruh kuantitas final nol
+    S-->>P: Daftar tervalidasi tanpa pengadaan
+  end

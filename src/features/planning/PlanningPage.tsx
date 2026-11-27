@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { keys, useLists, useOrders, useStock } from '@/api/queries'
+import { keys, useOrders, usePlanningList, useStock } from '@/api/queries'
 import { procurementApi } from '@/api/services'
 import { ApiError, errorMessage } from '@/api/errors'
 import { PageHead } from '@/components/layout/AppShell'
@@ -14,22 +14,30 @@ export function PlanningPage() {
   const qc = useQueryClient()
   const orders = useOrders(period)
   const stock = useStock()
-  const draft = useLists('DRAFT', period)
+  const activeList = usePlanningList(period)
   const calc = useMutation({
-    mutationFn: () => procurementApi.calculate(period),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: keys.lists('DRAFT', period) })
-      nav(`/ppic/review/${period}`)
+    mutationFn: (includeForecast: boolean) => procurementApi.calculate(period, includeForecast),
+    onSuccess: (draft) => {
+      void qc.invalidateQueries({ queryKey: keys.planningList(period) })
+      nav(`/ppic/review/${draft.planningPeriod}`)
+    },
+    onError: (e) => {
+      if (e instanceof ApiError && e.code === 'ACTIVE_LIST_EXISTS') void activeList.refetch()
     },
   })
-  const hasDraft = (draft.data?.lists.length ?? 0) > 0
+  const list = activeList.data
+  const listStatus = {
+    DRAFT: 'Draf siap ditinjau',
+    VALIDATED_BY_PPIC: list?.procurementRequired ? 'Siap dikirim ke PFA' : 'Tidak perlu pengadaan',
+    SENT_TO_PFA: 'Terkirim ke PFA',
+  }
   const stale = stock.data?.items.filter((i) => i.stockStatus === 'STALE').length ?? 0
 
   return (
     <>
       <PageHead
         title="Perencanaan minggu ini"
-        sub={`Periode ${period}. Sistem memecah resep, menambah prediksi AI, lalu mengurangi stok gudang.`}
+        sub={`Periode ${period}. Sistem menghitung kebutuhan dari resep, safety stock, dan stok gudang dengan pilihan prediksi AI.`}
       />
       <div className="mb-5 grid grid-cols-3 gap-5">
         <Card>
@@ -39,12 +47,18 @@ export function PlanningPage() {
         <Card>
           <p className="text-n-700">Bahan dipantau</p>
           <p className="font-display text-base font-bold">{stock.data?.items.length ?? '-'}</p>
-          <p className="text-xs text-n-700">{stale} stok usang</p>
+          {stock.data && <p className="text-xs text-n-700">{stale} stok usang</p>}
         </Card>
         <Card>
           <p className="text-n-700">Daftar belanja</p>
           <p className="font-display text-base font-bold">
-            {hasDraft ? 'Draf siap ditinjau' : 'Belum dihitung'}
+            {activeList.isError
+              ? 'Gagal dimuat'
+              : list
+                ? listStatus[list.status]
+                : activeList.isLoading
+                  ? 'Memuat'
+                  : 'Belum dihitung'}
           </p>
         </Card>
       </div>
@@ -56,30 +70,46 @@ export function PlanningPage() {
             PFA.
           </p>
         </div>
-        {hasDraft ? (
+        {list ? (
           <Link
             to={`/ppic/review/${period}`}
             className="inline-flex min-h-12 items-center rounded-sm bg-primary px-5 text-base font-semibold text-white"
           >
-            Lanjut tinjau draf
+            {list.status === 'DRAFT' ? 'Lanjut tinjau draf' : 'Buka daftar belanja'}
           </Link>
         ) : (
-          <Button
-            variant="primary"
-            size="lg"
-            disabled={calc.isPending}
-            onClick={() => calc.mutate()}
-          >
-            {calc.isPending ? 'Menghitung' : 'Hitung kebutuhan minggu ini'}
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              size="lg"
+              disabled={calc.isPending || activeList.isPending || activeList.isError}
+              onClick={() => calc.mutate(false)}
+            >
+              Hitung tanpa prediksi AI
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={calc.isPending || activeList.isPending || activeList.isError}
+              onClick={() => calc.mutate(true)}
+            >
+              {calc.isPending ? 'Menghitung' : 'Hitung kebutuhan minggu ini'}
+            </Button>
+          </div>
         )}
       </Card>
+      {activeList.isError && (
+        <div className="mb-5">
+          <Alert tone="error" title="Daftar belanja gagal dimuat">
+            {errorMessage(activeList.error)}
+          </Alert>
+        </div>
+      )}
       {calc.isError && (
         <div className="mb-5">
           <Alert
             tone="error"
             title={
-              calc.error instanceof ApiError && calc.error.status === 409
+              calc.error instanceof ApiError && calc.error.code === 'ACTIVE_LIST_EXISTS'
                 ? 'Sudah ada daftar'
                 : 'Perhitungan gagal'
             }
@@ -91,7 +121,9 @@ export function PlanningPage() {
       <div className="grid grid-cols-2 gap-5">
         <Card>
           <h2 className="mb-3 text-base font-bold">Pesanan terkonfirmasi</h2>
-          {orders.isLoading ? (
+          {orders.isError ? (
+            <Alert tone="error">{errorMessage(orders.error)}</Alert>
+          ) : orders.isLoading ? (
             <Spinner />
           ) : (
             <table className="w-full text-left">
@@ -122,7 +154,9 @@ export function PlanningPage() {
         </Card>
         <Card>
           <h2 className="mb-3 text-base font-bold">Stok gudang terkini</h2>
-          {stock.isLoading ? (
+          {stock.isError ? (
+            <Alert tone="error">{errorMessage(stock.error)}</Alert>
+          ) : stock.isLoading ? (
             <Spinner />
           ) : (
             <table className="w-full text-left">
@@ -137,13 +171,19 @@ export function PlanningPage() {
                 {stock.data?.items.map((i) => (
                   <tr key={i.ingredientId} className="odd:bg-n-50">
                     <td className="px-2 py-2">{i.name}</td>
-                    <td className="text-right">{formatQty(i.currentStock, i.baseUnit)}</td>
+                    <td className="text-right">
+                      {i.currentStock === null
+                        ? 'Belum diketahui'
+                        : formatQty(i.currentStock, i.baseUnit)}
+                    </td>
                     <td className="pl-3">
                       {i.stockStatus === 'FRESH' ? (
                         <Tag tone="success">Segar</Tag>
                       ) : (
                         <Tag tone="warning">
-                          Usang, {minutesAgo(i.lastIotSync) ?? '?'} menit lalu
+                          {i.lastIotSync
+                            ? `Usang, ${minutesAgo(i.lastIotSync) ?? '?'} menit lalu`
+                            : 'Belum sinkron'}
                         </Tag>
                       )}
                     </td>

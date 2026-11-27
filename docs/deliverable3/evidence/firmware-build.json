@@ -1,0 +1,80 @@
+{
+  "verified_at_utc": "2026-11-27T09:55:33.474966+00:00",
+  "host": {
+    "compiler": "g++ (Rev2, Built by MSYS2 project) 14.2.0",
+    "compile_command": [
+      "g++",
+      "-std=c++11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "firmware/tests/esp32_scale_test.cpp",
+      "-o",
+      "ml\\runtime\\sprint7\\firmware\\esp32_scale_test.exe"
+    ],
+    "compile": {
+      "return_code": 0,
+      "output": ""
+    },
+    "test_command": [
+      "ml\\runtime\\sprint7\\firmware\\esp32_scale_test.exe"
+    ],
+    "test": {
+      "return_code": 0,
+      "output": "ESP32 scale policy tests passed"
+    },
+    "source_sha256": "bb9f287324e24821c902002d0b8337f5f3d8fbd0dcc837177bad2741f78a87f6"
+  },
+  "target": {
+    "arduino_cli": {
+      "return_code": 0,
+      "output": "arduino-cli  Version: 1.5.1 Commit: 01f3d4f2b Date: 2026-06-05T10:22:12Z"
+    },
+    "core_list": {
+      "return_code": 0,
+      "output": "ID          Installed Latest Name\nesp32:esp32 2.0.17    4.0.0  esp32"
+    },
+    "library_list": {
+      "return_code": 0,
+      "output": "Name                  Installed Available   Location Description\nAdafruit BusIO        1.17.4    -           user     -\nAdafruit GFX Library  1.12.4    -           user     -\nAdafruit SSD1306      2.5.16    -           user     -\nHX711 Arduino Library 0.7.5     -           user     -"
+    },
+    "fqbn": "esp32:esp32:esp32",
+    "compile_command": [
+      "ml\\runtime\\arduino6e\\arduino-cli.exe",
+      "compile",
+      "--fqbn",
+      "esp32:esp32:esp32",
+      "--jobs",
+      "8",
+      "--additional-urls",
+      "https://espressif.github.io/arduino-esp32/package_esp32_index.json",
+      "--build-path",
+      "X:\\sprint7\\build",
+      "X:\\sprint7\\compile-fixture\\esp32_scale"
+    ],
+    "build_config": "Local compile fixture using invented settings",
+    "compile": {
+      "return_code": 0,
+      "output": "Sketch uses 815437 bytes (62%) of program storage space. Maximum is 1310720 bytes.\nGlobal variables use 46824 bytes (14%) of dynamic memory, leaving 280856 bytes for local variables. Maximum is 327680 bytes."
+    },
+    "source_sha256": {
+      "esp32_scale.ino": "89f3f36b6ead6ebe7732355f62aea803dff15558db67a1f8002758ac1c309949",
+      "scale_telemetry.h": "0c5e0dabf5e31efe16dda7b5bc4e9f1fcc2464f5573abccd4164a8217e6ca6f2",
+      "secrets.example.h": "a275fad6e6c9ffcd8166ce62586bd67b53c66da9fee0f97e53d55f4c25e9d1af"
+    },
+    "binary_bytes": 822016,
+    "binary_sha256": "19db82211420e7de70eae956cd279fc484d13143a6655bc07d8fea866795d019",
+    "temporary_drive_cleanup": {
+      "return_code": 0,
+      "output": ""
+    }
+  },
+  "hardware": {
+    "arduino_board_list_exit_code": 0,
+    "arduino_com_ports": [],
+    "windows_com_ports": [],
+    "physical_actions_performed": []
+  }
+}

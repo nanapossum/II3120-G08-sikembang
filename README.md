@@ -1,14 +1,20 @@
-# SIkembang (frontend)
+# SiKembang
 
-Antarmuka web untuk **SIkembang**, sistem rekomendasi kebutuhan bahan: Marketing mencatat pesanan,
+Antarmuka web untuk **SiKembang**, sistem rekomendasi kebutuhan bahan. Marketing mencatat pesanan,
 sistem memecahnya lewat resep, AI menambah prediksi dari riwayat dan tren musiman, stok gudang
 dikurangkan, PPIC meninjau (boleh menerima, mengubah, atau menolak rekomendasi AI), lalu PFA menerima
 dokumen permintaan bahan.
 
-Repo ini hanya berisi **frontend**. AI layer dan data layer ada di backend dan diakses lewat REST API
-(kontrak: Laporan Kelompok 08 Deliverable 2 II3120, Bab 9).
+Repo ini memuat frontend React serta backend FastAPI dan SQLite di direktori `ml/`. Keduanya
+berkomunikasi melalui REST API sesuai Laporan Kelompok 08 Deliverable 2 II3120, Bab 9.
 
-## Tech stack
+Paket handoff Deliverable 3 memuat setup Windows, arsitektur, kontrak API, model XGBoost,
+panduan ESP32, skrip demo, materi laporan dan PPT, serta bukti pengujian. Demo software
+terverifikasi dengan telemetry simulasi. Kompilasi ESP32 lulus. Pengukuran fisik menunggu
+upload dan kalibrasi. [Paket handoff D3](docs/deliverable3/README.md) ·
+[Mulai di Windows](docs/deliverable3/windows.md) · [Bukti pengujian](docs/deliverable3/EVIDENCE_INDEX.md)
+
+## Teknologi frontend
 
 | Kebutuhan            | Pilihan                                                       | Alasan singkat                                                            |
 | -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -42,8 +48,23 @@ payload di laporan. Untuk memakai backend sungguhan:
 # .env
 VITE_API_MODE=live
 VITE_API_BASE_URL=/api
-VITE_DEV_PROXY_TARGET=http://localhost:8000   # opsional, menghindari CORS saat dev
+VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000
 ```
+
+### Menjalankan mode live di Windows
+
+Ikuti panduan Windows untuk membuat venv, memuat artefak model, menginisialisasi dan mengisi
+SQLite, serta menjalankan FastAPI dan frontend di dua terminal. [Langkah eksekusi lengkap](docs/deliverable3/windows.md)
+
+Buka `http://127.0.0.1:5173`. Masuk menggunakan akun seed `marketing`, `ppic`, atau `pfa`
+dan password masing-masing dari konfigurasi backend. Sesi browser memakai JWT dan membaca peran
+melalui `/api/auth/me`. Token tersimpan per tab. Gunakan **Keluar** untuk mengganti akun.
+
+Untuk menjalankan mock, mulai ulang Vite dengan `$env:VITE_API_MODE = 'mock'` dan kosongkan
+`VITE_DEV_PROXY_TARGET`. Mock menjalankan MSW dan menampilkan pemilih peran serta simulator.
+Untuk mengirim telemetry simulasi ke backend live, gunakan klien dan kunci sensor terdaftar
+sesuai [panduan fallback perangkat](firmware/esp32_scale/README.md#walkthrough-fisik-dan-fallback).
+Pada build live, host frontend perlu menyediakan route `/api` atau konfigurasi base URL yang sesuai.
 
 | Skrip                             | Fungsi                                   |
 | --------------------------------- | ---------------------------------------- |
@@ -83,7 +104,7 @@ sikembang/
 │   ├── app/  # provider, router, sesi
 │   │   ├── providers.tsx
 │   │   ├── router.tsx
-│   │   └── session.tsx  # peran dan token (ganti saat ada login nyata)
+│   │   └── session.tsx  # sesi JWT live dan peran demo mock
 │   ├── components/  # komponen bersama
 │   │   ├── layout/  # AppShell dan navigasi per peran
 │   │   │   └── AppShell.tsx
@@ -129,11 +150,12 @@ Prinsipnya: **satu folder fitur per peran/layar** di `features/`, **satu pintu k
 
 | Rute                    | Peran     | Isi                                                                        |
 | ----------------------- | --------- | -------------------------------------------------------------------------- |
+| `/login`                | Live      | Autentikasi akun dashboard                                                |
 | `/marketing/orders/new` | Marketing | Catat pesanan terkonfirmasi                                                |
 | `/ppic`                 | PPIC      | Ringkasan minggu ini, stok, tombol hitung kebutuhan                        |
 | `/ppic/review/:period`  | PPIC      | Tinjau draf: Terima, Ubah, atau Tolak AI per bahan, lalu setujui dan kirim |
 | `/pfa/requests`         | PFA       | Dokumen permintaan bahan yang sudah dikirim                                |
-| `/demo/simulator`       | Semua     | Simulator timbangan IoT untuk demo                                         |
+| `/demo/simulator`       | Mock      | Simulator timbangan IoT untuk demo                                         |
 
 ## Aturan desain
 
@@ -146,7 +168,5 @@ Prinsipnya: **satu folder fitur per peran/layar** di `features/`, **satu pintu k
 
 - Layar revisi pesanan (`PUT /api/orders/{id}` dengan penanganan 409 `VERSION_CONFLICT`). Service sudah ada di `ordersApi.update`.
 - Daftar menu: `MENU_OPTIONS` di `features/orders/OrderFormPage.tsx` masih statis. Perlu endpoint menu atau `GET /api/menus`.
-- Login sungguhan (JWT). Saat ini peran dipilih manual pada mode mock, lihat `app/session.tsx`.
-- Tombol "Simpan draf" belum ada karena kontrak API belum punya endpoint simpan draf.
 - Konfirmasi "Terima permintaan" di sisi PFA belum ada endpoint-nya.
-- Tampilan indikator musim (Ramadan, pernikahan, akhir tahun) dari `season_flags` AI belum ditampilkan karena `POST /api/ai/predict` hanya dipanggil backend.
+- Tampilan indikator musim belum tersedia. Flag musim dapat dilihat pada respons `POST /api/ai/predict` oleh PPIC/SYSTEM.

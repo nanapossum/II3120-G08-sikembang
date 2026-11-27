@@ -17,19 +17,35 @@ export const REJECT_REASONS = [
 
 export type Line = {
   ingredientId: string
-  baseUnit: string
+  baseUnit: 'kg' | 'liter' | 'butir'
   bomConfirmedNeed: number
   aiAdditionalForecast: number
   safetyStock: number
-  iotAvailableStock: number
+  iotAvailableStock: number | null
   stockStatus: 'FRESH' | 'STALE'
   systemNetRecommendation: number
 }
 export type Decision = { mode: Mode; finalQty: number; note: string; rejectReason?: string }
 
-const r3 = (n: number) => Math.round(n * 1000) / 1000
-export const netWithoutAi = (l: Line) =>
-  Math.max(0, r3(l.bomConfirmedNeed + l.safetyStock - l.iotAvailableStock))
+function decimalParts(quantity: number) {
+  const [mantissa, exponent = '0'] = quantity.toString().split('e')
+  const [whole, fraction = ''] = mantissa.split('.')
+  return { digits: BigInt(whole + fraction), places: fraction.length - Number(exponent) }
+}
+
+export function netWithoutAi(l: Line) {
+  if (l.iotAvailableStock === null) return null
+  // Match backend decimal half-up rounding, including when subtraction crosses a half-unit.
+  const quantities = [l.bomConfirmedNeed, l.safetyStock, l.iotAvailableStock].map(decimalParts)
+  const unitPlaces = l.baseUnit === 'butir' ? 0 : 3
+  const places = Math.max(unitPlaces, ...quantities.map((q) => q.places))
+  const [bom, safety, stock] = quantities.map((q) => q.digits * 10n ** BigInt(places - q.places))
+  const net = bom + safety - stock
+  if (net <= 0n) return 0
+  const divisor = 10n ** BigInt(places - unitPlaces)
+  const rounded = (net + divisor / 2n) / divisor
+  return Number(`${rounded}e-${unitPlaces}`)
+}
 
 export const initialDecision = (l: Line): Decision => ({
   mode: 'ACCEPT',
@@ -39,7 +55,10 @@ export const initialDecision = (l: Line): Decision => ({
 
 export function setMode(l: Line, d: Decision, mode: Mode, rejectReason?: string): Decision {
   if (mode === 'ACCEPT') return { mode, finalQty: l.systemNetRecommendation, note: d.note }
-  if (mode === 'REJECT_AI') return { mode, finalQty: netWithoutAi(l), note: d.note, rejectReason }
+  if (mode === 'REJECT_AI') {
+    const finalQty = netWithoutAi(l)
+    return finalQty === null ? d : { mode, finalQty, note: d.note, rejectReason }
+  }
   return { mode, finalQty: d.finalQty, note: d.note }
 }
 

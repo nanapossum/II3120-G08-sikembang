@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=72.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sikembang-ai-forecast"
+version = "0.2.0"
+description = "Weekly additional ingredient demand forecasting for SiKembang"
+requires-python = ">=3.13"
+dependencies = ["numpy>=2.2,<3", "tzdata>=2025.2"]
+
+[project.optional-dependencies]
+test = ["pytest>=9,<10", "httpx>=0.28,<1"]
+train = ["xgboost>=3.1.3,<4", "scikit-learn>=1.6.1,<2", "matplotlib>=3.10.3,<4"]
+api = ["fastapi>=0.165,<1", "pydantic>=2.14,<3", "uvicorn>=0.54,<1",
+       "xgboost>=3.1.3,<4", "scikit-learn>=1.6.1,<2"]
+backend = ["fastapi>=0.165,<1", "pydantic>=2.14,<3", "uvicorn>=0.54,<1",
+           "xgboost>=3.1.3,<4", "scikit-learn>=1.6.1,<2",
+           "SQLAlchemy>=2.0.53,<2.1", "PyJWT>=2.15.1,<3"]
+
+[project.scripts]
+sikembang-dataset = "ai_forecast.dataset:main"
+sikembang-train = "ai_forecast.train:main"
+sikembang-evaluate = "ai_forecast.evaluate:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/sikembang-ai-forecast/config" = ["config/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

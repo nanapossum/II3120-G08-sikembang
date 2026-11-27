@@ -1,7 +1,7 @@
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useSession, type Role } from '@/app/session'
 import { cn } from '@/lib/cn'
-import { Select, Tag } from '@/components/ui'
+import { Button, Select, Tag } from '@/components/ui'
 
 export const NAV: Record<Role, { to: string; label: string }[]> = {
   MARKETING: [{ to: '/marketing/orders/new', label: 'Pesanan baru' }],
@@ -15,19 +15,29 @@ export const HOME: Record<Role, string> = {
 }
 
 export function AppShell() {
-  const { role, setRole, canSwitchRole } = useSession()
+  const session = useSession()
+  const { role } = session
   const { pathname } = useLocation()
-  // Setiap peran hanya boleh membuka bagian miliknya (demo simulator terbuka untuk semua).
-  const prefix = { MARKETING: '/marketing', PPIC: '/ppic', PFA: '/pfa' }[role]
-  if (!pathname.startsWith(prefix) && !pathname.startsWith('/demo'))
+  if (!role) return <Navigate to="/login" replace />
+
+  const prefix = `/${role.toLowerCase()}`
+  const simulator = { to: '/demo/simulator', label: 'Simulator IoT' }
+  const canUseSimulator = session.mode === 'mock'
+  if (
+    pathname !== prefix &&
+    !pathname.startsWith(`${prefix}/`) &&
+    !(canUseSimulator && (pathname === simulator.to || pathname === `${simulator.to}/`))
+  ) {
     return <Navigate to={HOME[role]} replace />
+  }
+  const navigation = canUseSimulator ? [...NAV[role], simulator] : NAV[role]
 
   return (
     <div className="min-h-screen">
       <header className="flex h-16 items-center justify-between bg-n-0 px-8">
         <span className="font-display text-base font-bold text-primary">SIkembang</span>
         <nav aria-label="Navigasi utama" className="flex gap-2">
-          {[...NAV[role], { to: '/demo/simulator', label: 'Simulator IoT' }].map((n) => (
+          {navigation.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -44,17 +54,21 @@ export function AppShell() {
         </nav>
         <div className="flex items-center gap-3">
           <Tag tone="primary">{role}</Tag>
-          {canSwitchRole && (
+          {session.mode === 'mock' ? (
             <Select
               aria-label="Ganti peran (mode mock)"
               className="w-32"
               value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
+              onChange={(e) => session.setRole(e.target.value as Role)}
             >
               <option>MARKETING</option>
               <option>PPIC</option>
               <option>PFA</option>
             </Select>
+          ) : (
+            <Button variant="ghost" type="button" onClick={session.signOut}>
+              Keluar
+            </Button>
           )}
         </div>
       </header>

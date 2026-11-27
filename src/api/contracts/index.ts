@@ -1,7 +1,6 @@
 /*
  * Kontrak REST API (Laporan Kelompok 08, Bab 9). Nama atribut mengikuti backend (snake_case).
- * Ini satu-satunya tempat bentuk data backend didefinisikan. Response memakai looseObject
- * supaya atribut tambahan dari backend lain tidak membuat UI error.
+ * Ini satu-satunya tempat bentuk data backend didefinisikan.
  * Ganti backend = ubah file ini dan folder services/, bukan komponen UI.
  */
 import { z } from 'zod'
@@ -47,7 +46,7 @@ export const StockRes = z.looseObject({
     z.looseObject({
       ingredient_id: z.string(),
       name: z.string(),
-      current_stock: z.number(),
+      current_stock: z.number().nullable(),
       base_unit: BaseUnit,
       safety_stock: z.number(),
       last_iot_sync: z.string().nullish(),
@@ -57,43 +56,81 @@ export const StockRes = z.looseObject({
 })
 
 // Procurement + shopping lists
-export const ListItem = z.looseObject({
+const Quantity = z.number().nonnegative()
+const CalculatedLine = z.object({
   ingredient_id: z.string(),
   base_unit: BaseUnit,
-  bom_confirmed_need: z.number().optional(),
-  ai_additional_forecast: z.number().optional(),
-  safety_stock: z.number().optional(),
-  iot_available_stock: z.number().optional(),
-  stock_status: StockStatus.optional(),
-  system_net_recommendation: z.number().optional(),
-  ppic_final_qty: z.number().nullish(),
-  ppic_notes: z.string().nullish(),
-  warnings: z.array(z.unknown()).optional(),
+  bom_confirmed_need: Quantity,
+  ai_additional_forecast: Quantity,
+  safety_stock: Quantity,
+  iot_available_stock: Quantity,
+  stock_status: StockStatus,
+  system_net_recommendation: Quantity,
 })
-export const CalculateRes = z.looseObject({
-  list_id: z.string(),
-  status: ListStatus,
-  planning_period: z.string(),
-  items: z.array(ListItem),
+const ListIdentity = z.object({ list_id: z.string(), planning_period: z.string() })
+const DraftMetadata = ListIdentity.extend({
+  created_at: z.string(),
+  forecast_run_id: z.string().nullable(),
+  warnings: z.array(z.object({ code: z.string(), ingredient_id: z.string(), message: z.string() })),
 })
-export const ApproveRes = z.looseObject({
+export const CalculateRes = DraftMetadata.extend({
+  status: z.literal('DRAFT'),
+  include_forecast: z.boolean(),
+  model_version: z.string().nullable(),
+  items: z.array(CalculatedLine),
+})
+const ApprovedLine = CalculatedLine.pick({
+  ingredient_id: true,
+  base_unit: true,
+  system_net_recommendation: true,
+}).extend({ ppic_final_qty: Quantity })
+export const ApproveRes = z.object({
   list_id: z.string(),
-  status: ListStatus,
+  status: z.literal('VALIDATED_BY_PPIC'),
+  validated_by: z.string(),
+  validated_at: z.string(),
   procurement_required: z.boolean(),
+  items: z.array(ApprovedLine),
 })
-export const SendRes = z.looseObject({
+export const SendRes = z.object({
   list_id: z.string(),
-  status: ListStatus,
+  status: z.literal('SENT_TO_PFA'),
   sent_at: z.string(),
 })
-export const ListsRes = z.looseObject({
+const PpicLine = CalculatedLine.extend({
+  name: z.string(),
+  iot_available_stock: Quantity.nullable(),
+  ppic_final_qty: Quantity.nullable(),
+  ppic_notes: z.string().nullable(),
+})
+export const ListsRes = z.object({
   lists: z.array(
-    z.looseObject({
-      list_id: z.string(),
-      planning_period: z.string(),
+    DraftMetadata.extend({
       status: ListStatus,
-      sent_at: z.string().nullish(),
-      items: z.array(ListItem),
+      validated_by: z.string().nullable(),
+      validated_at: z.string().nullable(),
+      procurement_required: z.boolean().nullable(),
+      sent_at: z.string().nullable(),
+      ppic_notes: z.string().nullable(),
+      items: z.array(PpicLine),
+    }),
+  ),
+})
+export const SentListsRes = z.object({
+  lists: z.array(
+    ListIdentity.extend({
+      status: z.literal('SENT_TO_PFA'),
+      sent_at: z.string(),
+      items: z.array(
+        PpicLine.pick({
+          ingredient_id: true,
+          name: true,
+          base_unit: true,
+        }).extend({
+          ppic_final_qty: z.number().positive(),
+          ppic_notes: z.string().nullish(),
+        }),
+      ),
     }),
   ),
 })

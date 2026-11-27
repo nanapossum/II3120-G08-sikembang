@@ -1,0 +1,17 @@
+flowchart TD
+    latest["Telemetri IoT terbaru yang diterima"] --> stock["Stok kini dalam satuan dasar"]
+    stock --> procurement["Kalkulasi pengadaan bersih"]
+    physical["Bukti minggu lalu: log fisik batas minggu, ledger, produksi dan run live"] --> reconcile["Pilih run dan rekonsiliasi yang disahkan sebelum cutoff"]
+    synthetic["Paket replay sintetis: bukti dan run baseline"] -->|"Snapshot seluruhnya sintetis"| reconcile
+    reconcile -->|"Eligible"| adjustment["Hitung residual dan batasi koreksi"]
+    reconcile -->|"Bukti belum eligible"| neutral["Koreksi 0, feedback_available = 0"]
+    mixed["Snapshot campuran demo"] --> neutral
+    adjustment --> xgb["Inferensi XGBoost"]
+    neutral --> xgb
+    xgb --> estimate["Prediksi kebutuhan tambahan"]
+    estimate --> procurement
+    bom["BOM confirmed dan safety stock"] --> procurement
+    classDef source fill:#eef7f5,stroke:#11645c,color:#172721
+    classDef result fill:#f7ebdf,stroke:#965319,color:#40230f
+    class latest,physical,synthetic,mixed,bom source
+    class estimate,procurement result

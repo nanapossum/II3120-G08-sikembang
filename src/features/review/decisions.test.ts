@@ -36,6 +36,19 @@ describe('keputusan PPIC', () => {
     expect(d.finalQty).toBe(29.5)
   })
   it('batas minimum 0', () => expect(netWithoutAi(minyak)).toBe(0))
+  it('membulatkan hasil tanpa AI ke satu butir terdekat', () => {
+    expect(netWithoutAi({ ...beras, baseUnit: 'butir', bomConfirmedNeed: 18 })).toBe(3)
+  })
+  it('membulatkan tepat pada batas setengah gram', () => {
+    expect(
+      netWithoutAi({ ...beras, bomConfirmedNeed: 1, safetyStock: 1, iotAvailableStock: 1.9995 }),
+    ).toBe(0.001)
+  })
+  it('mempertahankan keputusan saat stok belum diketahui', () => {
+    const row = { ...minyak, iotAvailableStock: null }
+    const decision = initialDecision(row)
+    expect(setMode(row, decision, 'REJECT_AI', 'Prediksi tidak realistis')).toEqual(decision)
+  })
   it('tolak AI wajib punya alasan', () => {
     const d = setMode(beras, initialDecision(beras), 'REJECT_AI')
     expect(validate([beras], { [beras.ingredientId]: d })[beras.ingredientId]).toMatch(/alasan/)

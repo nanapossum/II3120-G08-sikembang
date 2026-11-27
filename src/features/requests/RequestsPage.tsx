@@ -1,17 +1,16 @@
 import { useState } from 'react'
-import { useLists, useStock } from '@/api/queries'
+import { useSentLists } from '@/api/queries'
+import { errorMessage } from '@/api/errors'
 import { PageHead } from '@/components/layout/AppShell'
-import { Button, Card, EmptyState, Spinner, Tag } from '@/components/ui'
+import { Alert, Button, Card, EmptyState, Spinner, Tag } from '@/components/ui'
 import { cn } from '@/lib/cn'
-import { formatDateTime, formatQty } from '@/lib/format'
+import { formatApprovedQty, formatDateTime } from '@/lib/format'
 
 export function RequestsPage() {
-  const lists = useLists('SENT_TO_PFA')
-  const stock = useStock()
+  const lists = useSentLists()
   const [selected, setSelected] = useState<string>()
   if (lists.isLoading) return <Spinner />
   const all = lists.data?.lists ?? []
-  const names = Object.fromEntries((stock.data?.items ?? []).map((i) => [i.ingredientId, i.name]))
   const cur = all.find((l) => l.listId === selected) ?? all[0]
 
   return (
@@ -20,7 +19,11 @@ export function RequestsPage() {
         title="Permintaan bahan masuk"
         sub="Hanya daftar yang sudah disetujui PPIC yang tampil di sini."
       />
-      {!cur ? (
+      {lists.isError ? (
+        <Alert tone="error" title="Daftar permintaan gagal dimuat">
+          {errorMessage(lists.error)}
+        </Alert>
+      ) : !cur ? (
         <Card>
           <EmptyState title="Belum ada permintaan masuk">
             Daftar muncul setelah PPIC mengirimnya.
@@ -65,10 +68,8 @@ export function RequestsPage() {
               <tbody>
                 {cur.items.map((i) => (
                   <tr key={i.ingredientId} className="odd:bg-n-50">
-                    <td className="px-2 py-2 font-semibold">
-                      {names[i.ingredientId] ?? i.ingredientId}
-                    </td>
-                    <td className="text-right">{formatQty(i.ppicFinalQty ?? 0, i.baseUnit)}</td>
+                    <td className="px-2 py-2 font-semibold">{i.name}</td>
+                    <td className="text-right">{formatApprovedQty(i.ppicFinalQty, i.baseUnit)}</td>
                     <td className="px-3 text-n-700">{i.ppicNotes ?? ''}</td>
                   </tr>
                 ))}
