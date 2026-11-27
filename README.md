@@ -157,16 +157,3 @@ Prinsipnya: **satu folder fitur per peran/layar** di `features/`, **satu pintu k
 | `/pfa/requests`         | PFA       | Dokumen permintaan bahan yang sudah dikirim                                |
 | `/demo/simulator`       | Mock      | Simulator timbangan IoT untuk demo                                         |
 
-## Aturan desain
-
-- Ukuran teks hanya 12/14/16 px, radius hanya 8/12/16 px, warna dominan netral dari palet proyek.
-- Tombol dan highlight memakai fill kontras tinggi, bukan stroke. Outline hanya untuk fokus keyboard.
-- Status selalu punya label teks (Segar, Usang, Ditolak), tidak mengandalkan warna saja.
-- Detail dan catatan aksesibilitas: [docs/architecture.md](docs/architecture.md).
-
-## Yang belum ada (TODO)
-
-- Layar revisi pesanan (`PUT /api/orders/{id}` dengan penanganan 409 `VERSION_CONFLICT`). Service sudah ada di `ordersApi.update`.
-- Daftar menu: `MENU_OPTIONS` di `features/orders/OrderFormPage.tsx` masih statis. Perlu endpoint menu atau `GET /api/menus`.
-- Konfirmasi "Terima permintaan" di sisi PFA belum ada endpoint-nya.
-- Tampilan indikator musim belum tersedia. Flag musim dapat dilihat pada respons `POST /api/ai/predict` oleh PPIC/SYSTEM.
