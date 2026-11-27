@@ -146,3 +146,33 @@ def test_monolith_health_login_d2_error_and_database_forecast(tmp_path):
         run = session.get(ForecastRunRecord, run_id)
         assert run is not None and run.source == "synthetic"
         assert run.cutoff_at == CUTOFF
+
+
+def test_cors_allows_local_frontend_origins(tmp_path):
+    from sikembang_backend.app import create_app
+    from sikembang_backend.db import create_database, initialize
+    from sikembang_backend.settings import Settings
+
+    path = tmp_path / "cors.sqlite3"
+    engine = create_database(path)
+    initialize(engine)
+    engine.dispose()
+    app = create_app(Settings(database_path=path, jwt_secret="s" * 32))
+
+    async def scenario():
+        async with app.router.lifespan_context(app):
+            transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                for origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+                    preflight = await client.options(
+                        "/api/inventory/stock",
+                        headers={
+                            "Origin": origin,
+                            "Access-Control-Request-Method": "GET",
+                            "Access-Control-Request-Headers": "Authorization",
+                        },
+                    )
+                    assert preflight.status_code == 200
+                    assert preflight.headers.get("access-control-allow-origin") == origin
+
+    asyncio.run(scenario())

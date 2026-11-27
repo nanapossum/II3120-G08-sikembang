@@ -10,7 +10,13 @@ export const keys = {
 }
 export const useOrders = (period: string) =>
   useQuery({ queryKey: keys.orders(period), queryFn: () => ordersApi.list(period) })
-export const useStock = () => useQuery({ queryKey: keys.stock, queryFn: inventoryApi.stock })
+export const useStock = () =>
+  useQuery({
+    queryKey: keys.stock,
+    queryFn: inventoryApi.stock,
+    refetchInterval: 2_500,
+    staleTime: 0,
+  })
 export const usePlanningList = (period: string) =>
   useQuery({
     queryKey: keys.planningList(period),

@@ -19,6 +19,20 @@ def validate_demo_cutoff(value: datetime) -> datetime:
     return value.astimezone(WIB)
 
 
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+)
+
+
+def _cors_origins_from_env() -> tuple[str, ...]:
+    raw = os.environ.get("SIKEMBANG_CORS_ORIGINS")
+    if not raw:
+        return DEFAULT_CORS_ORIGINS
+    origins = tuple(origin.strip() for origin in raw.split(",") if origin.strip())
+    return origins or DEFAULT_CORS_ORIGINS
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(hide_input_in_errors=True)
 
@@ -27,6 +41,7 @@ class Settings(BaseModel):
     system_key: SecretStr | None = None
     artifact_dir: Path | None = None
     demo_cutoff: datetime | None = None
+    cors_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS
 
     @field_validator("jwt_secret")
     @classmethod
@@ -65,6 +80,7 @@ class Settings(BaseModel):
             system_key=SecretStr(system_key) if system_key else None,
             artifact_dir=os.environ.get("SIKEMBANG_ARTIFACT") or None,
             demo_cutoff=os.environ.get("SIKEMBANG_DEMO_CUTOFF") or None,
+            cors_origins=_cors_origins_from_env(),
         )
 
 

@@ -344,3 +344,25 @@ def test_history_does_not_infer_source_for_legacy_reading(inventory_api):
     reading, = service.telemetry_history("rice")
     assert reading.stored_value == 20.5
     assert reading.device_source is None
+
+
+def test_repeated_esp32_gram_readings_convert_to_kg_and_stay_fresh(inventory_api):
+    client, _, clock, _ = inventory_api
+    headers = bearer(client)
+    readings = [
+        (1250.5, "2026-11-23T01:05:00.000000Z", 1.2505),
+        (1250.5, "2026-11-23T01:05:05.125000Z", 1.2505),
+        (0.0, "2026-11-23T01:05:10.250000Z", 0.0),
+    ]
+    for weight_g, recorded_at, expected_kg in readings:
+        clock.now = datetime.fromisoformat(recorded_at) + timedelta(milliseconds=50)
+        response = send(client, measured_weight=weight_g, unit="g", recorded_at=recorded_at)
+        assert response.status_code == 201, response.text
+        receipt = response.json()
+        assert receipt["base_unit"] == "kg"
+        assert receipt["stored_value"] == pytest.approx(expected_kg)
+        assert receipt["current_stock"] == pytest.approx(expected_kg)
+
+        stock = client.get(STOCK, params={"ingredient_ids": "rice"}, headers=headers).json()["items"][0]
+        assert stock["stock_status"] == "FRESH"
+        assert stock["current_stock"] == pytest.approx(expected_kg)
