@@ -119,13 +119,34 @@ def test_approval_records_the_authenticated_planner_and_preserves_the_recommenda
         assert (oil.system_net_recommendation, oil.ppic_final_qty, oil.ppic_notes) == (0, 4, "Cek fisik: 13 liter.")
 
 
+def test_approval_converts_compatible_units_to_canonical_quantities(api, database):
+    client, _ = api
+    _, sessions = database
+    list_id = create_draft(client)
+    body = approval(rice=40250, oil=3750)
+    body["items"][0]["unit"] = "g"
+    body["items"][1]["unit"] = "ml"
+
+    response = client.patch(f"/api/shopping-lists/{list_id}/approve", headers=login(client, "planner"), json=body)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["items"] == [
+        {"ingredient_id": "ING-001", "base_unit": "kg", "system_net_recommendation": 29.5, "ppic_final_qty": 40.25},
+        {"ingredient_id": "ING-012", "base_unit": "liter", "system_net_recommendation": 0, "ppic_final_qty": 3.75},
+    ]
+    with sessions() as session:
+        rice = session.get(ShoppingListItem, (list_id, "ING-001"))
+        oil = session.get(ShoppingListItem, (list_id, "ING-012"))
+        assert (rice.ppic_final_qty, oil.ppic_final_qty) == (40.25, 3.75)
+
+
 @pytest.mark.parametrize(("change", "status", "code"), [
     (lambda body: body.update(items=[]), 422, "INCOMPLETE_ITEMS"),
     (lambda body: body["items"].pop(), 422, "INCOMPLETE_ITEMS"),
     (lambda body: body["items"].append({"ingredient_id": "ING-999", "ppic_final_qty": 1}), 422, "INCOMPLETE_ITEMS"),
     (lambda body: body["items"].append(body["items"][0]), 422, "INCOMPLETE_ITEMS"),
     (lambda body: body["items"][1].update(ppic_final_qty=-1), 422, "NEGATIVE_VALUE"),
-    (lambda body: body["items"][1].update(unit="ml"), 422, "UNIT_MISMATCH"),
+    (lambda body: body["items"][1].update(unit="g"), 422, "UNIT_MISMATCH"),
     (lambda body: body["items"][1].pop("ppic_notes"), 422, "STALE_STOCK_NOTE_REQUIRED"),
     (lambda body: body["items"][1].update(ppic_notes=" \t ", ppic_final_qty=0), 422, "STALE_STOCK_NOTE_REQUIRED"),
     (lambda body: body["items"][1].pop("ppic_final_qty"), 400, "VALIDATION_ERROR"),
@@ -272,7 +293,7 @@ def test_ppic_lists_filter_by_status_and_valid_iso_period(api):
         assert_error(client.get(route, headers=ppic, params=params), 400, "VALIDATION_ERROR")
 
 
-def test_sent_list_after_restart_contains_only_pfa_handoff_data(api, database):
+def test_sent_list_after_restart_preserves_ppic_audit_and_limits_pfa_handoff(api, database):
     client, clock = api
     settings, _ = database
     ppic = login(client, "planner")
@@ -282,7 +303,9 @@ def test_sent_list_after_restart_contains_only_pfa_handoff_data(api, database):
     route = f"/api/shopping-lists/{list_id}"
     params = {"status": "SENT_TO_PFA", "planning_period": "2026-W48"}
     clock["now"] = APPROVED_AT
-    response = client.patch(f"{route}/approve", headers=ppic, json=approval())
+    body = approval()
+    body["items"][0]["ppic_notes"] = "Beras tidak perlu dibeli."
+    response = client.patch(f"{route}/approve", headers=ppic, json=body)
     assert response.status_code == 200, response.text
     assert client.get("/api/shopping-lists", params=params, headers=buyer).json() == {"lists": []}
     clock["now"] = SENT_AT
@@ -302,11 +325,16 @@ def test_sent_list_after_restart_contains_only_pfa_handoff_data(api, database):
         mismatched = restarted.get("/api/shopping-lists", params={**params, "planning_period": "2026-W49"}, headers=buyer)
         assert mismatched.json() == {"lists": []}
         response = restarted.get("/api/shopping-lists", params=params, headers=ppic)
+        assert response.status_code == 200, response.text
         [reviewed] = response.json()["lists"]
         assert (reviewed["validated_by"], reviewed["validated_at"], reviewed["ppic_notes"]) == (
             "planner", "2026-11-23T09:20:00+07:00", "Catatan internal PPIC.",
         )
-        assert [item["ingredient_id"] for item in reviewed["items"]] == ["ING-012"]
+        rice, oil = reviewed["items"]
+        assert (rice["ingredient_id"], rice["system_net_recommendation"], rice["ppic_final_qty"], rice["ppic_notes"]) == (
+            "ING-001", 29.5, 0, "Beras tidak perlu dibeli.",
+        )
+        assert (oil["ingredient_id"], oil["system_net_recommendation"], oil["ppic_final_qty"]) == ("ING-012", 0, 4)
 
 
 @pytest.mark.parametrize("operation", ["approve", "send"])

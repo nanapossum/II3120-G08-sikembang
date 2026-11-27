@@ -68,9 +68,10 @@ class SystemPrincipal:
 
 
 class SystemAuthority:
-    def __init__(self, key: SecretStr | None):
+    def __init__(self, key: SecretStr | None, sessions: sessionmaker[Session]):
         self._principal = SystemPrincipal()
         self._key_digest = hashlib.sha256(key.get_secret_value().encode("ascii")).digest() if key else None
+        self._sessions = sessions
 
     @property
     def principal(self) -> SystemPrincipal:
@@ -85,6 +86,9 @@ class SystemAuthority:
             raise _forbidden_role()
         if not compare_digest(hashlib.sha256(key.encode("utf-8")).digest(), self._key_digest):
             raise _forbidden_role()
+        with self._sessions() as session:
+            if session.scalar(select(Device.sensor_id).where(Device.key_hash == self._key_digest.hex())) is not None:
+                raise _forbidden_role()
         return self._principal
 
 

@@ -16,7 +16,7 @@ from ai_forecast.fixtures import WIB
 from .auth import Auth, DashboardIdentity, DashboardRole
 from .drafts import DraftWarning, parse_planning_period
 from .errors import AppError
-from .inventory import BaseUnit
+from .inventory import BaseUnit, canonical_quantity
 from .models import Ingredient, ShoppingList, ShoppingListItem
 
 ListStatus = Literal["DRAFT", "VALIDATED_BY_PPIC", "SENT_TO_PFA"]
@@ -142,15 +142,17 @@ def _apply_approval(item: ShoppingListItem, approval: ApprovalItem) -> ApprovedI
     note = (approval.ppic_notes or "").strip() or None
     if approval.ppic_final_qty < 0:
         raise AppError(422, "NEGATIVE_VALUE", "Kuantitas akhir tidak boleh negatif.", details)
-    if approval.unit is not None and approval.unit != item.base_unit:
+    submitted_unit = item.base_unit if approval.unit is None else approval.unit
+    final_qty, unit = canonical_quantity(approval.ppic_final_qty, submitted_unit)
+    if unit != item.base_unit:
         raise AppError(422, "UNIT_MISMATCH", "Satuan harus sesuai dengan satuan dasar bahan.",
                        {**details, "base_unit": item.base_unit})
     if item.stock_status == "STALE" and note is None:
         raise AppError(422, "STALE_STOCK_NOTE_REQUIRED", "Catatan verifikasi fisik diperlukan untuk stok usang.", details)
-    item.ppic_final_qty = approval.ppic_final_qty
+    item.ppic_final_qty = final_qty
     item.ppic_notes = note
     return ApprovedItem(ingredient_id=item.ingredient_id, base_unit=item.base_unit,
-                        system_net_recommendation=item.system_net_recommendation, ppic_final_qty=approval.ppic_final_qty)
+                        system_net_recommendation=item.system_net_recommendation, ppic_final_qty=final_qty)
 
 
 class ShoppingListService:
@@ -213,7 +215,7 @@ class ShoppingListService:
                                                   .order_by(sort_by.desc(), ShoppingList.planning_period.desc())))
             rows = (select(ShoppingListItem, Ingredient.name).join(Ingredient)
                     .join(ShoppingList).where(*filters).order_by(ShoppingListItem.ingredient_id))
-            if status == "SENT_TO_PFA":
+            if role == "PFA":
                 rows = rows.where(ShoppingListItem.ppic_final_qty > 0)
             items = defaultdict(list)
             for item, name in session.execute(rows):

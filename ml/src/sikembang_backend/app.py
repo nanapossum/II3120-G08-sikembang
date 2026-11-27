@@ -59,7 +59,7 @@ def create_app(settings: Settings | None = None, *, clock: Callable[[], datetime
     install_handlers(app)
     sessions = session_factory(engine)
     auth = Auth(sessions, settings.jwt_secret.get_secret_value())
-    system = SystemAuthority(settings.system_key)
+    system = SystemAuthority(settings.system_key, sessions)
     ppic_only = auth.require("PPIC")
 
     def reader_role(credentials: Bearer, key: SystemKey) -> str:

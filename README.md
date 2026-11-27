@@ -73,7 +73,8 @@ melalui `/api/auth/me`. Token tersimpan per tab. Gunakan **Keluar** untuk mengga
 
 Untuk menjalankan mock, mulai ulang Vite dengan `$env:VITE_API_MODE = 'mock'` dan kosongkan
 `VITE_DEV_PROXY_TARGET`. Mock menjalankan MSW dan menampilkan pemilih peran serta simulator.
-Mode live mengirim telemetry demo ke FastAPI melalui API perangkat yang sudah diregistrasi.
+Untuk mengirim telemetry simulasi ke backend live, gunakan klien dan kunci sensor terdaftar
+sesuai [panduan fallback perangkat](firmware/esp32_scale/README.md#walkthrough-fisik-dan-fallback).
 Pada build live, host frontend perlu menyediakan route `/api` atau konfigurasi base URL yang sesuai.
 
 | Skrip                             | Fungsi                                   |

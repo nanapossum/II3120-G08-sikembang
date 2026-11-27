@@ -81,8 +81,8 @@ def test_reserved_draft_rejects_another_authoritys_principal(database):
     from sikembang_backend.drafts import DraftItem, DraftService
 
     _, sessions = database
-    authority = SystemAuthority(None)
-    unauthorized = SystemAuthority(None).principal
+    authority = SystemAuthority(None, sessions)
+    unauthorized = SystemAuthority(None, sessions).principal
     service = DraftService(authority)
     with pytest.raises(AppError) as error, sessions.begin() as session:
         service.reserve(session, "2026-W48", CREATED_AT, principal=unauthorized)
@@ -120,6 +120,17 @@ def test_direct_draft_creation_is_disabled_without_system_key(database):
     with TestClient(create_app(settings, clock=lambda: CREATED_AT)) as client:
         response = client.post("/api/shopping-lists", headers=SYSTEM_HEADERS, json=_payload(_item()))
     assert response.status_code == 403, response.text
+
+
+def test_http_system_key_cannot_overlap_registered_device_key(database):
+    path, sessions = database
+    settings = Settings(database_path=path, jwt_secret=JWT_SECRET, system_key=DEVICE_KEY)
+    with TestClient(create_app(settings, clock=lambda: CREATED_AT)) as client:
+        response = client.post("/api/shopping-lists", headers={"X-System-Key": DEVICE_KEY}, json=_payload(_item()))
+    assert response.status_code == 403, response.text
+    assert response.json()["error"]["code"] == "FORBIDDEN_ROLE"
+    with sessions() as session:
+        assert session.scalars(select(ShoppingList)).all() == []
 
 
 def test_system_key_has_its_own_openapi_security_scheme(api):

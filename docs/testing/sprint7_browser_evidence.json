@@ -1,0 +1,493 @@
+{
+  "browser": {
+    "mock": {
+      "pick_role": true,
+      "stock_http": 200,
+      "from_service_worker": true
+    },
+    "order_created": {
+      "path": "/api/orders",
+      "status": 201,
+      "worker": false,
+      "body": {
+        "order_id": "ORD-2026-2285A980FBA94767ACCF7693ED3DBC5F",
+        "status": "CONFIRMED",
+        "version": 1,
+        "created_at": "2026-11-27T16:57:01.604161+07:00"
+      }
+    },
+    "ppic_orders": {
+      "status": 200,
+      "order_id": "ORD-2026-2285A980FBA94767ACCF7693ED3DBC5F",
+      "found_version": 2
+    },
+    "ppic_stock": {
+      "status": 200,
+      "items": [
+        {
+          "ingredient_id": "ING-001",
+          "name": "Beras",
+          "current_stock": 21.5,
+          "base_unit": "kg",
+          "safety_stock": 5,
+          "last_iot_sync": "2026-11-27T16:57:01.739000+07:00",
+          "stock_status": "FRESH"
+        },
+        {
+          "ingredient_id": "ING-003",
+          "name": "Ayam",
+          "current_stock": 20,
+          "base_unit": "kg",
+          "safety_stock": 8,
+          "last_iot_sync": null,
+          "stock_status": "STALE"
+        },
+        {
+          "ingredient_id": "ING-007",
+          "name": "Telur",
+          "current_stock": 120,
+          "base_unit": "butir",
+          "safety_stock": 50,
+          "last_iot_sync": null,
+          "stock_status": "STALE"
+        },
+        {
+          "ingredient_id": "ING-009",
+          "name": "Santan",
+          "current_stock": 45,
+          "base_unit": "liter",
+          "safety_stock": 3,
+          "last_iot_sync": null,
+          "stock_status": "STALE"
+        },
+        {
+          "ingredient_id": "ING-012",
+          "name": "Minyak goreng",
+          "current_stock": 18,
+          "base_unit": "liter",
+          "safety_stock": 3,
+          "last_iot_sync": null,
+          "stock_status": "STALE"
+        }
+      ]
+    },
+    "planning_screenshot": "ml/runtime/sprint7/browser-eade06f7/planning-live.png",
+    "calculation": {
+      "path": "/api/procurement/calculate",
+      "status": 201,
+      "worker": false,
+      "body": {
+        "list_id": "SL-2026-W48-0f37c96bc38546ebb4979231e1511dad",
+        "status": "DRAFT",
+        "planning_period": "2026-W48",
+        "created_at": "2026-11-27T16:57:04.236719+07:00",
+        "items": [
+          {
+            "ingredient_id": "ING-001",
+            "base_unit": "kg",
+            "bom_confirmed_need": 78,
+            "ai_additional_forecast": 4.498,
+            "safety_stock": 5,
+            "iot_available_stock": 21.5,
+            "stock_status": "FRESH",
+            "system_net_recommendation": 65.998
+          },
+          {
+            "ingredient_id": "ING-003",
+            "base_unit": "kg",
+            "bom_confirmed_need": 82.8,
+            "ai_additional_forecast": 4.219,
+            "safety_stock": 8,
+            "iot_available_stock": 20,
+            "stock_status": "STALE",
+            "system_net_recommendation": 75.019
+          },
+          {
+            "ingredient_id": "ING-007",
+            "base_unit": "butir",
+            "bom_confirmed_need": 300,
+            "ai_additional_forecast": 49,
+            "safety_stock": 50,
+            "iot_available_stock": 120,
+            "stock_status": "STALE",
+            "system_net_recommendation": 279
+          },
+          {
+            "ingredient_id": "ING-009",
+            "base_unit": "liter",
+            "bom_confirmed_need": 10.4,
+            "ai_additional_forecast": 0,
+            "safety_stock": 3,
+            "iot_available_stock": 45,
+            "stock_status": "STALE",
+            "system_net_recommendation": 0
+          },
+          {
+            "ingredient_id": "ING-012",
+            "base_unit": "liter",
+            "bom_confirmed_need": 6.08,
+            "ai_additional_forecast": 0.328,
+            "safety_stock": 3,
+            "iot_available_stock": 18,
+            "stock_status": "STALE",
+            "system_net_recommendation": 0
+          }
+        ],
+        "warnings": [
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-003",
+            "message": "Periksa stok fisik Ayam sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-007",
+            "message": "Periksa stok fisik Telur sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-009",
+            "message": "Periksa stok fisik Santan sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-012",
+            "message": "Periksa stok fisik Minyak goreng sebelum menyetujui."
+          }
+        ],
+        "include_forecast": true,
+        "forecast_run_id": "FC-2026-W48-9597b7c9d915401a82e22fd68f852112",
+        "model_version": "xgb-v1-f9a770b940f71fc8"
+      }
+    },
+    "review_screenshot": "ml/runtime/sprint7/browser-eade06f7/review-live.png",
+    "approval": {
+      "path": "/api/shopping-lists/SL-2026-W48-0f37c96bc38546ebb4979231e1511dad/approve",
+      "status": 200,
+      "worker": false,
+      "body": {
+        "list_id": "SL-2026-W48-0f37c96bc38546ebb4979231e1511dad",
+        "status": "VALIDATED_BY_PPIC",
+        "validated_by": "ppic",
+        "validated_at": "2026-11-27T16:57:04.699892+07:00",
+        "procurement_required": true,
+        "items": [
+          {
+            "ingredient_id": "ING-001",
+            "base_unit": "kg",
+            "system_net_recommendation": 65.998,
+            "ppic_final_qty": 42.25
+          },
+          {
+            "ingredient_id": "ING-003",
+            "base_unit": "kg",
+            "system_net_recommendation": 75.019,
+            "ppic_final_qty": 0
+          },
+          {
+            "ingredient_id": "ING-007",
+            "base_unit": "butir",
+            "system_net_recommendation": 279,
+            "ppic_final_qty": 279
+          },
+          {
+            "ingredient_id": "ING-009",
+            "base_unit": "liter",
+            "system_net_recommendation": 0,
+            "ppic_final_qty": 0
+          },
+          {
+            "ingredient_id": "ING-012",
+            "base_unit": "liter",
+            "system_net_recommendation": 0,
+            "ppic_final_qty": 0
+          }
+        ]
+      }
+    },
+    "sent": {
+      "path": "/api/shopping-lists/SL-2026-W48-0f37c96bc38546ebb4979231e1511dad/send",
+      "status": 200,
+      "worker": false,
+      "body": {
+        "list_id": "SL-2026-W48-0f37c96bc38546ebb4979231e1511dad",
+        "status": "SENT_TO_PFA",
+        "sent_at": "2026-11-27T16:57:04.762213+07:00"
+      }
+    },
+    "review_metadata": {
+      "stale_notes_filled": 4,
+      "rejected_ai_ingredient": "ING-012",
+      "rejected_ai_final_quantity": 0
+    },
+    "pfa": {
+      "list_id": "SL-2026-W48-0f37c96bc38546ebb4979231e1511dad",
+      "confirmed_quantity_visible": 42.25
+    },
+    "pfa_screenshot": "ml/runtime/sprint7/browser-eade06f7/pfa-live.png",
+    "live_api_requests": [
+      {
+        "path": "/api/auth/me",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/orders",
+        "status": 201,
+        "worker": false
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/orders",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/inventory/stock",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/procurement/calculate",
+        "status": 201,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists/SL-2026-W48-0f37c96bc38546ebb4979231e1511dad/approve",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists/SL-2026-W48-0f37c96bc38546ebb4979231e1511dad/send",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 200,
+        "worker": false
+      },
+      {
+        "path": "/api/shopping-lists",
+        "status": 200,
+        "worker": false
+      }
+    ],
+    "unhandled_exceptions": [],
+    "vite_host": "preview"
+  },
+  "http": {
+    "d2_endpoints": [
+      "POST /api/orders",
+      "PUT /api/orders/{order_id}",
+      "GET /api/orders",
+      "POST /api/iot/telemetry",
+      "GET /api/inventory/stock",
+      "POST /api/ai/predict",
+      "POST /api/procurement/calculate",
+      "POST /api/shopping-lists",
+      "GET /api/shopping-lists",
+      "PATCH /api/shopping-lists/{list_id}/approve",
+      "POST /api/shopping-lists/{list_id}/send"
+    ],
+    "revised_order": {
+      "status": 200,
+      "response": {
+        "order_id": "ORD-2026-2285A980FBA94767ACCF7693ED3DBC5F",
+        "version": 2,
+        "updated_at": "2026-11-27T16:57:02.646706+07:00"
+      }
+    },
+    "stale_order": {
+      "status": 409,
+      "response": {
+        "error": {
+          "code": "VERSION_CONFLICT",
+          "message": "Pesanan sudah direvisi. Muat ulang data terbaru sebelum mengirim revisi.",
+          "details": {
+            "order_id": "ORD-2026-2285A980FBA94767ACCF7693ED3DBC5F",
+            "sent_version": 1,
+            "current_version": 2
+          }
+        }
+      }
+    },
+    "telemetry": {
+      "status": 201,
+      "response": {
+        "log_id": "TLM-f9b44e31c3b14b20be59602474ae9bb1",
+        "validation_status": "ACCEPTED",
+        "ingredient_id": "ING-001",
+        "stored_value": 21.5,
+        "base_unit": "kg",
+        "current_stock": 21.5,
+        "last_iot_sync": "2026-11-27T16:57:01.739000+07:00"
+      }
+    },
+    "pfa_published": {
+      "status": 200,
+      "response": {
+        "lists": [
+          {
+            "list_id": "SL-2026-W48-0f37c96bc38546ebb4979231e1511dad",
+            "planning_period": "2026-W48",
+            "status": "SENT_TO_PFA",
+            "sent_at": "2026-11-27T16:57:04.762213+07:00",
+            "items": [
+              {
+                "ingredient_id": "ING-001",
+                "name": "Beras",
+                "base_unit": "kg",
+                "ppic_notes": null,
+                "ppic_final_qty": 42.25
+              },
+              {
+                "ingredient_id": "ING-007",
+                "name": "Telur",
+                "base_unit": "butir",
+                "ppic_notes": "Cek fisik simulasi Sprint 7",
+                "ppic_final_qty": 279
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "pfa_drafts_denied": {
+      "status": 403,
+      "response": {
+        "error": {
+          "code": "FORBIDDEN_ROLE",
+          "message": "Peran tidak diizinkan untuk status daftar belanja ini.",
+          "details": {}
+        }
+      }
+    },
+    "pfa_send_denied": {
+      "status": 403,
+      "response": {
+        "error": {
+          "code": "FORBIDDEN_ROLE",
+          "message": "Peran tidak diizinkan.",
+          "details": {}
+        }
+      }
+    }
+  },
+  "databases": {
+    "live": {
+      "path": "ml/runtime/sprint7/browser-eade06f7/live.sqlite3",
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "forecast_runs": 1,
+      "accepted_telemetry_sources": [
+        "synthetic"
+      ],
+      "order_versions": [
+        1,
+        2
+      ],
+      "list": {
+        "list_id": "SL-2026-W48-0f37c96bc38546ebb4979231e1511dad",
+        "status": "SENT_TO_PFA",
+        "validated_by": "ppic",
+        "validated_at": "2026-11-27 09:57:04.699892",
+        "sent_at": "2026-11-27 09:57:04.762213",
+        "procurement_required": 1,
+        "forecast_run_id": "FC-2026-W48-9597b7c9d915401a82e22fd68f852112"
+      },
+      "items": [
+        {
+          "ingredient_id": "ING-001",
+          "system_net_recommendation": 65.998,
+          "ppic_final_qty": 42.25,
+          "ppic_notes": null,
+          "base_unit": "kg"
+        },
+        {
+          "ingredient_id": "ING-003",
+          "system_net_recommendation": 75.019,
+          "ppic_final_qty": 0,
+          "ppic_notes": "Cek fisik simulasi Sprint 7",
+          "base_unit": "kg"
+        },
+        {
+          "ingredient_id": "ING-007",
+          "system_net_recommendation": 279,
+          "ppic_final_qty": 279,
+          "ppic_notes": "Cek fisik simulasi Sprint 7",
+          "base_unit": "butir"
+        },
+        {
+          "ingredient_id": "ING-009",
+          "system_net_recommendation": 0,
+          "ppic_final_qty": 0,
+          "ppic_notes": "Cek fisik simulasi Sprint 7",
+          "base_unit": "liter"
+        },
+        {
+          "ingredient_id": "ING-012",
+          "system_net_recommendation": 0,
+          "ppic_final_qty": 0,
+          "ppic_notes": "[AI ditolak: Prediksi tidak realistis] Cek fisik simulasi Sprint 7",
+          "base_unit": "liter"
+        }
+      ],
+      "model_version": "xgb-v1-f9a770b940f71fc8"
+    }
+  }
+}

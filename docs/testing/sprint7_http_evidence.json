@@ -1,0 +1,1515 @@
+{
+  "telemetry": "simulated",
+  "cutoff": "2026-11-27T12:00:00+07:00",
+  "isolated_run": "ml/runtime/sprint7/http-90506ba4",
+  "seed": {
+    "period": "2026-W48",
+    "cutoff_at": "2026-11-27T12:00:00+07:00",
+    "source": "synthetic",
+    "inserted": {
+      "ingredients": 5,
+      "menus": 5,
+      "bom_recipes": 14,
+      "users": 3,
+      "devices": 2,
+      "orders": 2,
+      "order_revisions": 2,
+      "order_items": 4,
+      "weekly_demand": 20,
+      "feedback_evidence": 0
+    }
+  },
+  "repeat_seed": {
+    "period": "2026-W48",
+    "cutoff_at": "2026-11-27T12:00:00+07:00",
+    "source": "synthetic",
+    "inserted": {
+      "ingredients": 0,
+      "menus": 0,
+      "bom_recipes": 0,
+      "users": 0,
+      "devices": 0,
+      "orders": 0,
+      "order_revisions": 0,
+      "order_items": 0,
+      "weekly_demand": 0,
+      "feedback_evidence": 0
+    }
+  },
+  "workflow": {
+    "exposed_business_operations": 11,
+    "responses": {
+      "health": {
+        "method": "GET",
+        "path": "/api/health",
+        "request": null,
+        "status": 200,
+        "response": {
+          "status": "ok",
+          "database": "ok",
+          "model_version": "xgb-v1-f9a770b940f71fc8"
+        }
+      },
+      "missing_bearer": {
+        "method": "GET",
+        "path": "/api/inventory/stock",
+        "request": null,
+        "status": 401,
+        "response": {
+          "error": {
+            "code": "UNAUTHORIZED",
+            "message": "Autentikasi diperlukan.",
+            "details": {}
+          }
+        }
+      },
+      "marketing_cannot_read_stock": {
+        "method": "GET",
+        "path": "/api/inventory/stock",
+        "request": null,
+        "status": 403,
+        "response": {
+          "error": {
+            "code": "FORBIDDEN_ROLE",
+            "message": "Peran tidak diizinkan.",
+            "details": {}
+          }
+        }
+      },
+      "create_order": {
+        "method": "POST",
+        "path": "/api/orders",
+        "request": {
+          "customer_name": "Order uji Sprint 7",
+          "order_category": "PRASMANAN_WEDDING",
+          "event_date": "2026-11-29",
+          "event_location": "Lokasi uji",
+          "items": [
+            {
+              "menu_id": "MNU-W01",
+              "confirmed_portions": 40
+            }
+          ]
+        },
+        "status": 201,
+        "response": {
+          "order_id": "ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+          "status": "CONFIRMED",
+          "version": 1,
+          "created_at": "2026-11-27T12:00:00+07:00"
+        }
+      },
+      "revise_order": {
+        "method": "PUT",
+        "path": "/api/orders/ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+        "request": {
+          "event_date": "2026-11-29",
+          "event_location": "Lokasi uji",
+          "items": [
+            {
+              "menu_id": "MNU-W01",
+              "confirmed_portions": 60
+            }
+          ],
+          "version": 1
+        },
+        "status": 200,
+        "response": {
+          "order_id": "ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+          "version": 2,
+          "updated_at": "2026-11-27T12:00:00+07:00"
+        }
+      },
+      "old_revision": {
+        "method": "PUT",
+        "path": "/api/orders/ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+        "request": {
+          "event_date": "2026-11-29",
+          "event_location": "Lokasi uji",
+          "items": [
+            {
+              "menu_id": "MNU-W01",
+              "confirmed_portions": 60
+            }
+          ],
+          "version": 1
+        },
+        "status": 409,
+        "response": {
+          "error": {
+            "code": "VERSION_CONFLICT",
+            "message": "Pesanan sudah direvisi. Muat ulang data terbaru sebelum mengirim revisi.",
+            "details": {
+              "order_id": "ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+              "sent_version": 1,
+              "current_version": 2
+            }
+          }
+        }
+      },
+      "list_orders": {
+        "method": "GET",
+        "path": "/api/orders?planning_period=2026-W48",
+        "request": null,
+        "status": 200,
+        "response": {
+          "planning_period": "2026-W48",
+          "orders": [
+            {
+              "order_id": "DEMO-2026-W48-01",
+              "version": 1,
+              "updated_at": "2026-11-23T00:00:00+07:00",
+              "customer_name": "Pelanggan demo 1",
+              "order_category": "PRASMANAN_WEDDING",
+              "event_date": "2026-11-28",
+              "event_location": "Lokasi demo",
+              "items": [
+                {
+                  "menu_id": "MNU-W01",
+                  "confirmed_portions": 300
+                }
+              ]
+            },
+            {
+              "order_id": "DEMO-2026-W48-02",
+              "version": 1,
+              "updated_at": "2026-11-23T00:00:00+07:00",
+              "customer_name": "Pelanggan demo 2",
+              "order_category": "NASI_KOTAK",
+              "event_date": "2026-11-29",
+              "event_location": "Lokasi demo",
+              "items": [
+                {
+                  "menu_id": "MNU-A01",
+                  "confirmed_portions": 200
+                },
+                {
+                  "menu_id": "MNU-N01",
+                  "confirmed_portions": 200
+                },
+                {
+                  "menu_id": "MNU-S01",
+                  "confirmed_portions": 200
+                }
+              ]
+            },
+            {
+              "order_id": "ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+              "version": 2,
+              "updated_at": "2026-11-27T12:00:00+07:00",
+              "customer_name": "Order uji Sprint 7",
+              "order_category": "PRASMANAN_WEDDING",
+              "event_date": "2026-11-29",
+              "event_location": "Lokasi uji",
+              "items": [
+                {
+                  "menu_id": "MNU-W01",
+                  "confirmed_portions": 60
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "telemetry_300s": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 201,
+        "response": {
+          "log_id": "TLM-765b44a36b5f40f19755abb2540592c9",
+          "validation_status": "ACCEPTED",
+          "ingredient_id": "ING-001",
+          "stored_value": 17.5,
+          "base_unit": "kg",
+          "current_stock": 17.5,
+          "last_iot_sync": "2026-11-27T11:55:00+07:00"
+        }
+      },
+      "negative": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": -1,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 422,
+        "response": {
+          "error": {
+            "code": "NEGATIVE_VALUE",
+            "message": "Berat terukur tidak boleh negatif.",
+            "details": {
+              "log_id": "TLM-a2a2c97264f64bfd800c4de598ca5ae4",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "incompatible": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "ml",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 422,
+        "response": {
+          "error": {
+            "code": "UNIT_MISMATCH",
+            "message": "Satuan ml tidak dapat dikonversi ke satuan dasar bahan (kg).",
+            "details": {
+              "ingredient_id": "ING-001",
+              "unit": "ml",
+              "base_unit": "kg",
+              "log_id": "TLM-383959dde25a4503a3c8c24f72e205be",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "too_old": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:54:59+07:00"
+        },
+        "status": 422,
+        "response": {
+          "error": {
+            "code": "STALE_SENSOR_DATA",
+            "message": "Data sensor tercatat lebih dari 5 menit sebelum diterima server.",
+            "details": {
+              "recorded_at": "2026-11-27T11:54:59+07:00",
+              "received_at": "2026-11-27T12:00:00+07:00",
+              "max_age_seconds": 300,
+              "log_id": "TLM-4e24747f824044eda3f48e0a3d0b0d50",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "duplicate_time": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 409,
+        "response": {
+          "error": {
+            "code": "OUT_OF_ORDER_READING",
+            "message": "Waktu pembacaan harus lebih baru dari sinkronisasi terakhir.",
+            "details": {
+              "ingredient_id": "ING-001",
+              "last_iot_sync": "2026-11-27T11:55:00+07:00",
+              "log_id": "TLM-7f398e7c40b0492a9fd5839b0ab69596",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "future": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T12:00:01+07:00"
+        },
+        "status": 422,
+        "response": {
+          "error": {
+            "code": "FUTURE_TIMESTAMP",
+            "message": "Waktu pembacaan sensor berada di masa depan.",
+            "details": {
+              "recorded_at": "2026-11-27T12:00:01+07:00",
+              "received_at": "2026-11-27T12:00:00+07:00",
+              "log_id": "TLM-dd6c34c1f4a44d15aacee54e96f07d4e",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "wrong_sensor": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-KLK-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 422,
+        "response": {
+          "error": {
+            "code": "SENSOR_INGREDIENT_MISMATCH",
+            "message": "Sensor tidak terpasang pada bahan yang dikirim.",
+            "details": {
+              "sensor_id": "SNS-KLK-01",
+              "ingredient_id": "ING-001",
+              "log_id": "TLM-831a6a2134b0479e9094e398912dacd4",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "wrong_ingredient": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-003",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 422,
+        "response": {
+          "error": {
+            "code": "SENSOR_INGREDIENT_MISMATCH",
+            "message": "Sensor tidak terpasang pada bahan yang dikirim.",
+            "details": {
+              "sensor_id": "SNS-GDG-01",
+              "ingredient_id": "ING-003",
+              "log_id": "TLM-dea3e16b63ac4ada92c04c7f41fee68d",
+              "stock_changed": false
+            }
+          }
+        }
+      },
+      "wrong_key": {
+        "method": "POST",
+        "path": "/api/iot/telemetry",
+        "request": {
+          "sensor_id": "SNS-GDG-01",
+          "ingredient_id": "ING-001",
+          "measured_weight": 17500,
+          "unit": "g",
+          "recorded_at": "2026-11-27T11:55:00+07:00"
+        },
+        "status": 401,
+        "response": {
+          "error": {
+            "code": "UNAUTHORIZED",
+            "message": "Kunci perangkat tidak valid.",
+            "details": {}
+          }
+        }
+      },
+      "read_stock": {
+        "method": "GET",
+        "path": "/api/inventory/stock",
+        "request": null,
+        "status": 200,
+        "response": {
+          "as_of": "2026-11-27T12:00:00+07:00",
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "name": "Beras",
+              "current_stock": 17.5,
+              "base_unit": "kg",
+              "safety_stock": 5.0,
+              "last_iot_sync": "2026-11-27T11:55:00+07:00",
+              "stock_status": "FRESH"
+            },
+            {
+              "ingredient_id": "ING-003",
+              "name": "Ayam",
+              "current_stock": 20.0,
+              "base_unit": "kg",
+              "safety_stock": 8.0,
+              "last_iot_sync": null,
+              "stock_status": "STALE"
+            },
+            {
+              "ingredient_id": "ING-007",
+              "name": "Telur",
+              "current_stock": 120.0,
+              "base_unit": "butir",
+              "safety_stock": 50.0,
+              "last_iot_sync": null,
+              "stock_status": "STALE"
+            },
+            {
+              "ingredient_id": "ING-009",
+              "name": "Santan",
+              "current_stock": 45.0,
+              "base_unit": "liter",
+              "safety_stock": 3.0,
+              "last_iot_sync": null,
+              "stock_status": "STALE"
+            },
+            {
+              "ingredient_id": "ING-012",
+              "name": "Minyak goreng",
+              "current_stock": 18.0,
+              "base_unit": "liter",
+              "safety_stock": 3.0,
+              "last_iot_sync": null,
+              "stock_status": "STALE"
+            }
+          ]
+        }
+      },
+      "predict": {
+        "method": "POST",
+        "path": "/api/ai/predict",
+        "request": {
+          "target_period": "2026-W48",
+          "ingredient_ids": [
+            "ING-001"
+          ]
+        },
+        "status": 201,
+        "response": {
+          "forecast_run_id": "FC-2026-W48-1288cb0965cd484498cff83bfa1a9be1",
+          "target_period": "2026-W48",
+          "model_version": "xgb-v1-f9a770b940f71fc8",
+          "season_flags": {
+            "is_ramadan_season": false,
+            "is_wedding_season": true,
+            "is_year_end": false
+          },
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "predicted_demand": 4.498,
+              "base_unit": "kg",
+              "prev_error_adj": 0.0
+            }
+          ]
+        }
+      },
+      "calculate": {
+        "method": "POST",
+        "path": "/api/procurement/calculate",
+        "request": {
+          "planning_period": "2026-W48",
+          "include_forecast": true
+        },
+        "status": 201,
+        "response": {
+          "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+          "status": "DRAFT",
+          "planning_period": "2026-W48",
+          "created_at": "2026-11-27T12:00:00+07:00",
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "base_unit": "kg",
+              "bom_confirmed_need": 69.0,
+              "ai_additional_forecast": 4.498,
+              "safety_stock": 5.0,
+              "iot_available_stock": 17.5,
+              "stock_status": "FRESH",
+              "system_net_recommendation": 60.998
+            },
+            {
+              "ingredient_id": "ING-003",
+              "base_unit": "kg",
+              "bom_confirmed_need": 60.0,
+              "ai_additional_forecast": 4.219,
+              "safety_stock": 8.0,
+              "iot_available_stock": 20.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 52.219
+            },
+            {
+              "ingredient_id": "ING-007",
+              "base_unit": "butir",
+              "bom_confirmed_need": 360.0,
+              "ai_additional_forecast": 49.0,
+              "safety_stock": 50.0,
+              "iot_available_stock": 120.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 339.0
+            },
+            {
+              "ingredient_id": "ING-009",
+              "base_unit": "liter",
+              "bom_confirmed_need": 9.2,
+              "ai_additional_forecast": 0.0,
+              "safety_stock": 3.0,
+              "iot_available_stock": 45.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 0.0
+            },
+            {
+              "ingredient_id": "ING-012",
+              "base_unit": "liter",
+              "bom_confirmed_need": 5.0,
+              "ai_additional_forecast": 0.328,
+              "safety_stock": 3.0,
+              "iot_available_stock": 18.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 0.0
+            }
+          ],
+          "warnings": [
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-003",
+              "message": "Periksa stok fisik Ayam sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-007",
+              "message": "Periksa stok fisik Telur sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-009",
+              "message": "Periksa stok fisik Santan sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-012",
+              "message": "Periksa stok fisik Minyak goreng sebelum menyetujui."
+            }
+          ],
+          "include_forecast": true,
+          "forecast_run_id": "FC-2026-W48-dfc3490cd7344926b64ceb1ecd02905e",
+          "model_version": "xgb-v1-f9a770b940f71fc8"
+        }
+      },
+      "second_draft": {
+        "method": "POST",
+        "path": "/api/procurement/calculate",
+        "request": {
+          "planning_period": "2026-W48",
+          "include_forecast": true
+        },
+        "status": 409,
+        "response": {
+          "error": {
+            "code": "ACTIVE_LIST_EXISTS",
+            "message": "Daftar belanja aktif sudah ada untuk periode ini.",
+            "details": {
+              "planning_period": "2026-W48"
+            }
+          }
+        }
+      },
+      "send_before_approval": {
+        "method": "POST",
+        "path": "/api/shopping-lists/SL-2026-W48-92cfb8c2dade4d64983db3c78d230152/send",
+        "request": null,
+        "status": 409,
+        "response": {
+          "error": {
+            "code": "INVALID_STATUS_TRANSITION",
+            "message": "Daftar belanja harus berstatus VALIDATED_BY_PPIC.",
+            "details": {
+              "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+              "current_status": "DRAFT",
+              "required_status": "VALIDATED_BY_PPIC"
+            }
+          }
+        }
+      },
+      "view_draft": {
+        "method": "GET",
+        "path": "/api/shopping-lists?status=DRAFT",
+        "request": null,
+        "status": 200,
+        "response": {
+          "lists": [
+            {
+              "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+              "planning_period": "2026-W48",
+              "status": "DRAFT",
+              "created_at": "2026-11-27T12:00:00+07:00",
+              "forecast_run_id": "FC-2026-W48-dfc3490cd7344926b64ceb1ecd02905e",
+              "warnings": [
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-003",
+                  "message": "Periksa stok fisik Ayam sebelum menyetujui."
+                },
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-007",
+                  "message": "Periksa stok fisik Telur sebelum menyetujui."
+                },
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-009",
+                  "message": "Periksa stok fisik Santan sebelum menyetujui."
+                },
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-012",
+                  "message": "Periksa stok fisik Minyak goreng sebelum menyetujui."
+                }
+              ],
+              "ppic_notes": null,
+              "validated_by": null,
+              "validated_at": null,
+              "procurement_required": null,
+              "sent_at": null,
+              "items": [
+                {
+                  "ingredient_id": "ING-001",
+                  "name": "Beras",
+                  "base_unit": "kg",
+                  "ppic_notes": null,
+                  "bom_confirmed_need": 69.0,
+                  "ai_additional_forecast": 4.498,
+                  "safety_stock": 5.0,
+                  "iot_available_stock": 17.5,
+                  "stock_status": "FRESH",
+                  "system_net_recommendation": 60.998,
+                  "ppic_final_qty": null
+                },
+                {
+                  "ingredient_id": "ING-003",
+                  "name": "Ayam",
+                  "base_unit": "kg",
+                  "ppic_notes": null,
+                  "bom_confirmed_need": 60.0,
+                  "ai_additional_forecast": 4.219,
+                  "safety_stock": 8.0,
+                  "iot_available_stock": 20.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 52.219,
+                  "ppic_final_qty": null
+                },
+                {
+                  "ingredient_id": "ING-007",
+                  "name": "Telur",
+                  "base_unit": "butir",
+                  "ppic_notes": null,
+                  "bom_confirmed_need": 360.0,
+                  "ai_additional_forecast": 49.0,
+                  "safety_stock": 50.0,
+                  "iot_available_stock": 120.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 339.0,
+                  "ppic_final_qty": null
+                },
+                {
+                  "ingredient_id": "ING-009",
+                  "name": "Santan",
+                  "base_unit": "liter",
+                  "ppic_notes": null,
+                  "bom_confirmed_need": 9.2,
+                  "ai_additional_forecast": 0.0,
+                  "safety_stock": 3.0,
+                  "iot_available_stock": 45.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 0.0,
+                  "ppic_final_qty": null
+                },
+                {
+                  "ingredient_id": "ING-012",
+                  "name": "Minyak goreng",
+                  "base_unit": "liter",
+                  "ppic_notes": null,
+                  "bom_confirmed_need": 5.0,
+                  "ai_additional_forecast": 0.328,
+                  "safety_stock": 3.0,
+                  "iot_available_stock": 18.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 0.0,
+                  "ppic_final_qty": null
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "pfa_draft_forbidden": {
+        "method": "GET",
+        "path": "/api/shopping-lists?status=DRAFT",
+        "request": null,
+        "status": 403,
+        "response": {
+          "error": {
+            "code": "FORBIDDEN_ROLE",
+            "message": "Peran tidak diizinkan untuk status daftar belanja ini.",
+            "details": {}
+          }
+        }
+      },
+      "approve": {
+        "method": "PATCH",
+        "path": "/api/shopping-lists/SL-2026-W48-92cfb8c2dade4d64983db3c78d230152/approve",
+        "request": {
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "ppic_final_qty": 42250,
+              "unit": "g",
+              "ppic_notes": null
+            },
+            {
+              "ingredient_id": "ING-003",
+              "ppic_final_qty": 0,
+              "unit": "kg",
+              "ppic_notes": "Verifikasi stok fixture simulasi"
+            },
+            {
+              "ingredient_id": "ING-007",
+              "ppic_final_qty": 0,
+              "unit": "butir",
+              "ppic_notes": "Verifikasi stok fixture simulasi"
+            },
+            {
+              "ingredient_id": "ING-009",
+              "ppic_final_qty": 0,
+              "unit": "liter",
+              "ppic_notes": "Verifikasi stok fixture simulasi"
+            },
+            {
+              "ingredient_id": "ING-012",
+              "ppic_final_qty": 0,
+              "unit": "liter",
+              "ppic_notes": "Verifikasi stok fixture simulasi"
+            }
+          ]
+        },
+        "status": 200,
+        "response": {
+          "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+          "status": "VALIDATED_BY_PPIC",
+          "validated_by": "ppic",
+          "validated_at": "2026-11-27T12:00:00+07:00",
+          "procurement_required": true,
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "base_unit": "kg",
+              "system_net_recommendation": 60.998,
+              "ppic_final_qty": 42.25
+            },
+            {
+              "ingredient_id": "ING-003",
+              "base_unit": "kg",
+              "system_net_recommendation": 52.219,
+              "ppic_final_qty": 0.0
+            },
+            {
+              "ingredient_id": "ING-007",
+              "base_unit": "butir",
+              "system_net_recommendation": 339.0,
+              "ppic_final_qty": 0.0
+            },
+            {
+              "ingredient_id": "ING-009",
+              "base_unit": "liter",
+              "system_net_recommendation": 0.0,
+              "ppic_final_qty": 0.0
+            },
+            {
+              "ingredient_id": "ING-012",
+              "base_unit": "liter",
+              "system_net_recommendation": 0.0,
+              "ppic_final_qty": 0.0
+            }
+          ]
+        }
+      },
+      "send": {
+        "method": "POST",
+        "path": "/api/shopping-lists/SL-2026-W48-92cfb8c2dade4d64983db3c78d230152/send",
+        "request": null,
+        "status": 200,
+        "response": {
+          "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+          "status": "SENT_TO_PFA",
+          "sent_at": "2026-11-27T12:00:00+07:00"
+        }
+      },
+      "ppic_sent_audit": {
+        "method": "GET",
+        "path": "/api/shopping-lists?status=SENT_TO_PFA",
+        "request": null,
+        "status": 200,
+        "response": {
+          "lists": [
+            {
+              "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+              "planning_period": "2026-W48",
+              "status": "SENT_TO_PFA",
+              "created_at": "2026-11-27T12:00:00+07:00",
+              "forecast_run_id": "FC-2026-W48-dfc3490cd7344926b64ceb1ecd02905e",
+              "warnings": [
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-003",
+                  "message": "Periksa stok fisik Ayam sebelum menyetujui."
+                },
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-007",
+                  "message": "Periksa stok fisik Telur sebelum menyetujui."
+                },
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-009",
+                  "message": "Periksa stok fisik Santan sebelum menyetujui."
+                },
+                {
+                  "code": "STALE_STOCK",
+                  "ingredient_id": "ING-012",
+                  "message": "Periksa stok fisik Minyak goreng sebelum menyetujui."
+                }
+              ],
+              "ppic_notes": null,
+              "validated_by": "ppic",
+              "validated_at": "2026-11-27T12:00:00+07:00",
+              "procurement_required": true,
+              "sent_at": "2026-11-27T12:00:00+07:00",
+              "items": [
+                {
+                  "ingredient_id": "ING-001",
+                  "name": "Beras",
+                  "base_unit": "kg",
+                  "ppic_notes": null,
+                  "bom_confirmed_need": 69.0,
+                  "ai_additional_forecast": 4.498,
+                  "safety_stock": 5.0,
+                  "iot_available_stock": 17.5,
+                  "stock_status": "FRESH",
+                  "system_net_recommendation": 60.998,
+                  "ppic_final_qty": 42.25
+                },
+                {
+                  "ingredient_id": "ING-003",
+                  "name": "Ayam",
+                  "base_unit": "kg",
+                  "ppic_notes": "Verifikasi stok fixture simulasi",
+                  "bom_confirmed_need": 60.0,
+                  "ai_additional_forecast": 4.219,
+                  "safety_stock": 8.0,
+                  "iot_available_stock": 20.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 52.219,
+                  "ppic_final_qty": 0.0
+                },
+                {
+                  "ingredient_id": "ING-007",
+                  "name": "Telur",
+                  "base_unit": "butir",
+                  "ppic_notes": "Verifikasi stok fixture simulasi",
+                  "bom_confirmed_need": 360.0,
+                  "ai_additional_forecast": 49.0,
+                  "safety_stock": 50.0,
+                  "iot_available_stock": 120.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 339.0,
+                  "ppic_final_qty": 0.0
+                },
+                {
+                  "ingredient_id": "ING-009",
+                  "name": "Santan",
+                  "base_unit": "liter",
+                  "ppic_notes": "Verifikasi stok fixture simulasi",
+                  "bom_confirmed_need": 9.2,
+                  "ai_additional_forecast": 0.0,
+                  "safety_stock": 3.0,
+                  "iot_available_stock": 45.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 0.0,
+                  "ppic_final_qty": 0.0
+                },
+                {
+                  "ingredient_id": "ING-012",
+                  "name": "Minyak goreng",
+                  "base_unit": "liter",
+                  "ppic_notes": "Verifikasi stok fixture simulasi",
+                  "bom_confirmed_need": 5.0,
+                  "ai_additional_forecast": 0.328,
+                  "safety_stock": 3.0,
+                  "iot_available_stock": 18.0,
+                  "stock_status": "STALE",
+                  "system_net_recommendation": 0.0,
+                  "ppic_final_qty": 0.0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "pfa_read": {
+        "method": "GET",
+        "path": "/api/shopping-lists?status=SENT_TO_PFA",
+        "request": null,
+        "status": 200,
+        "response": {
+          "lists": [
+            {
+              "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+              "planning_period": "2026-W48",
+              "status": "SENT_TO_PFA",
+              "sent_at": "2026-11-27T12:00:00+07:00",
+              "items": [
+                {
+                  "ingredient_id": "ING-001",
+                  "name": "Beras",
+                  "base_unit": "kg",
+                  "ppic_notes": null,
+                  "ppic_final_qty": 42.25
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "browser_system_forbidden": {
+        "method": "POST",
+        "path": "/api/shopping-lists",
+        "request": {
+          "planning_period": "2026-W49",
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "base_unit": "kg",
+              "bom_confirmed_need": 69.0,
+              "ai_additional_forecast": 0.0,
+              "safety_stock": 5.0,
+              "iot_available_stock": 17.5,
+              "stock_status": "FRESH",
+              "system_net_recommendation": 56.5
+            }
+          ]
+        },
+        "status": 403,
+        "response": {
+          "error": {
+            "code": "FORBIDDEN_ROLE",
+            "message": "Peran tidak diizinkan.",
+            "details": {}
+          }
+        }
+      },
+      "system_draft": {
+        "method": "POST",
+        "path": "/api/shopping-lists",
+        "request": {
+          "planning_period": "2026-W49",
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "base_unit": "kg",
+              "bom_confirmed_need": 69.0,
+              "ai_additional_forecast": 0.0,
+              "safety_stock": 5.0,
+              "iot_available_stock": 17.5,
+              "stock_status": "FRESH",
+              "system_net_recommendation": 56.5
+            }
+          ]
+        },
+        "status": 201,
+        "response": {
+          "list_id": "SL-2026-W49-97be9981f2744cf9bc8cc6b3d92afdd9",
+          "status": "DRAFT"
+        }
+      },
+      "pfa_after_restart": {
+        "method": "GET",
+        "path": "/api/shopping-lists?status=SENT_TO_PFA",
+        "request": null,
+        "status": 200,
+        "response": {
+          "lists": [
+            {
+              "list_id": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+              "planning_period": "2026-W48",
+              "status": "SENT_TO_PFA",
+              "sent_at": "2026-11-27T12:00:00+07:00",
+              "items": [
+                {
+                  "ingredient_id": "ING-001",
+                  "name": "Beras",
+                  "base_unit": "kg",
+                  "ppic_notes": null,
+                  "ppic_final_qty": 42.25
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "order_after_restart": {
+        "method": "GET",
+        "path": "/api/orders?planning_period=2026-W48",
+        "request": null,
+        "status": 200,
+        "response": {
+          "planning_period": "2026-W48",
+          "orders": [
+            {
+              "order_id": "DEMO-2026-W48-01",
+              "version": 1,
+              "updated_at": "2026-11-23T00:00:00+07:00",
+              "customer_name": "Pelanggan demo 1",
+              "order_category": "PRASMANAN_WEDDING",
+              "event_date": "2026-11-28",
+              "event_location": "Lokasi demo",
+              "items": [
+                {
+                  "menu_id": "MNU-W01",
+                  "confirmed_portions": 300
+                }
+              ]
+            },
+            {
+              "order_id": "DEMO-2026-W48-02",
+              "version": 1,
+              "updated_at": "2026-11-23T00:00:00+07:00",
+              "customer_name": "Pelanggan demo 2",
+              "order_category": "NASI_KOTAK",
+              "event_date": "2026-11-29",
+              "event_location": "Lokasi demo",
+              "items": [
+                {
+                  "menu_id": "MNU-A01",
+                  "confirmed_portions": 200
+                },
+                {
+                  "menu_id": "MNU-N01",
+                  "confirmed_portions": 200
+                },
+                {
+                  "menu_id": "MNU-S01",
+                  "confirmed_portions": 200
+                }
+              ]
+            },
+            {
+              "order_id": "ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+              "version": 2,
+              "updated_at": "2026-11-27T12:00:00+07:00",
+              "customer_name": "Order uji Sprint 7",
+              "order_category": "PRASMANAN_WEDDING",
+              "event_date": "2026-11-29",
+              "event_location": "Lokasi uji",
+              "items": [
+                {
+                  "menu_id": "MNU-W01",
+                  "confirmed_portions": 60
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "order_id": "ORD-2026-2B77E30974CE4248A97DF3A39872E8AD",
+    "sent_list": "SL-2026-W48-92cfb8c2dade4d64983db3c78d230152",
+    "forecast_run": "FC-2026-W48-dfc3490cd7344926b64ceb1ecd02905e"
+  },
+  "database": {
+    "integrity": "ok",
+    "foreign_keys": 1,
+    "foreign_key_violations": [],
+    "tables": [
+      "bom_recipes",
+      "devices",
+      "feedback_evidence",
+      "forecast_run_items",
+      "forecast_runs",
+      "ingredients",
+      "iot_telemetry_logs",
+      "iot_telemetry_request_rejections",
+      "menus",
+      "order_items",
+      "order_revisions",
+      "orders",
+      "shopping_list_items",
+      "shopping_lists",
+      "users",
+      "weekly_demand"
+    ],
+    "rejected": [
+      "FUTURE_TIMESTAMP",
+      "NEGATIVE_VALUE",
+      "OUT_OF_ORDER_READING",
+      "SENSOR_INGREDIENT_MISMATCH",
+      "SENSOR_INGREDIENT_MISMATCH",
+      "STALE_SENSOR_DATA",
+      "UNAUTHORIZED",
+      "UNIT_MISMATCH"
+    ],
+    "accepted": [
+      [
+        17.5,
+        "kg",
+        "synthetic"
+      ]
+    ],
+    "restarted_list_status": "SENT_TO_PFA",
+    "order_versions": [
+      1,
+      2
+    ],
+    "rice_feedback": {
+      "source": "UNAVAILABLE",
+      "reference_run_id": null,
+      "raw_residual": null,
+      "bound": 85.55250000000001,
+      "available_at": null
+    }
+  },
+  "alternatives": {
+    "model_unavailable": {
+      "method": "POST",
+      "path": "/api/procurement/calculate",
+      "request": {
+        "planning_period": "2026-W48",
+        "include_forecast": true
+      },
+      "status": 500,
+      "response": {
+        "error": {
+          "code": "MODEL_UNAVAILABLE",
+          "message": "Artefak model prediksi tidak tersedia atau tidak kompatibel.",
+          "details": {}
+        }
+      }
+    },
+    "forecast_disabled": {
+      "method": "POST",
+      "path": "/api/procurement/calculate",
+      "request": {
+        "planning_period": "2026-W48",
+        "include_forecast": false
+      },
+      "status": 201,
+      "response": {
+        "list_id": "SL-2026-W48-4e228c0960ba49459f08a9780f80f671",
+        "status": "DRAFT",
+        "planning_period": "2026-W48",
+        "created_at": "2026-11-27T12:00:00+07:00",
+        "items": [
+          {
+            "ingredient_id": "ING-001",
+            "base_unit": "kg",
+            "bom_confirmed_need": 60.0,
+            "ai_additional_forecast": 0.0,
+            "safety_stock": 5.0,
+            "iot_available_stock": 20.5,
+            "stock_status": "STALE",
+            "system_net_recommendation": 44.5
+          },
+          {
+            "ingredient_id": "ING-003",
+            "base_unit": "kg",
+            "bom_confirmed_need": 54.0,
+            "ai_additional_forecast": 0.0,
+            "safety_stock": 8.0,
+            "iot_available_stock": 20.0,
+            "stock_status": "STALE",
+            "system_net_recommendation": 42.0
+          },
+          {
+            "ingredient_id": "ING-007",
+            "base_unit": "butir",
+            "bom_confirmed_need": 300.0,
+            "ai_additional_forecast": 0.0,
+            "safety_stock": 50.0,
+            "iot_available_stock": 120.0,
+            "stock_status": "STALE",
+            "system_net_recommendation": 230.0
+          },
+          {
+            "ingredient_id": "ING-009",
+            "base_unit": "liter",
+            "bom_confirmed_need": 8.0,
+            "ai_additional_forecast": 0.0,
+            "safety_stock": 3.0,
+            "iot_available_stock": 45.0,
+            "stock_status": "STALE",
+            "system_net_recommendation": 0.0
+          },
+          {
+            "ingredient_id": "ING-012",
+            "base_unit": "liter",
+            "bom_confirmed_need": 4.4,
+            "ai_additional_forecast": 0.0,
+            "safety_stock": 3.0,
+            "iot_available_stock": 18.0,
+            "stock_status": "STALE",
+            "system_net_recommendation": 0.0
+          }
+        ],
+        "warnings": [
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-001",
+            "message": "Periksa stok fisik Beras sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-003",
+            "message": "Periksa stok fisik Ayam sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-007",
+            "message": "Periksa stok fisik Telur sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-009",
+            "message": "Periksa stok fisik Santan sebelum menyetujui."
+          },
+          {
+            "code": "STALE_STOCK",
+            "ingredient_id": "ING-012",
+            "message": "Periksa stok fisik Minyak goreng sebelum menyetujui."
+          }
+        ],
+        "include_forecast": false,
+        "forecast_run_id": null,
+        "model_version": null
+      }
+    },
+    "history_incomplete": {
+      "method": "POST",
+      "path": "/api/ai/predict",
+      "request": {
+        "target_period": "2026-W49",
+        "ingredient_ids": [
+          "ING-001"
+        ]
+      },
+      "status": 422,
+      "response": {
+        "error": {
+          "code": "INSUFFICIENT_HISTORY",
+          "message": "Riwayat belum mencakup empat minggu lengkap.",
+          "details": {
+            "ingredient_id": "ING-001",
+            "missing_weeks": [
+              "2026-W48"
+            ],
+            "week_reasons": {
+              "2026-W48": "MISSING"
+            }
+          }
+        }
+      }
+    }
+  },
+  "stock_comparison": {
+    "before": {
+      "ingredient_id": "ING-001",
+      "base_unit": "kg",
+      "bom_confirmed_need": 69.0,
+      "ai_additional_forecast": 4.498,
+      "safety_stock": 5.0,
+      "iot_available_stock": 20.5,
+      "stock_status": "STALE",
+      "system_net_recommendation": 57.998
+    },
+    "after": {
+      "ingredient_id": "ING-001",
+      "base_unit": "kg",
+      "bom_confirmed_need": 69.0,
+      "ai_additional_forecast": 4.498,
+      "safety_stock": 5.0,
+      "iot_available_stock": 17.5,
+      "stock_status": "FRESH",
+      "system_net_recommendation": 60.998
+    },
+    "net_change_kg": 3.0,
+    "responses": {
+      "create_order": {
+        "method": "POST",
+        "path": "/api/orders",
+        "request": {
+          "customer_name": "Order uji Sprint 7",
+          "order_category": "PRASMANAN_WEDDING",
+          "event_date": "2026-11-29",
+          "event_location": "Lokasi uji",
+          "items": [
+            {
+              "menu_id": "MNU-W01",
+              "confirmed_portions": 40
+            }
+          ]
+        },
+        "status": 201,
+        "response": {
+          "order_id": "ORD-2026-9140F6949BEE48B4B2866AA5ABE52364",
+          "status": "CONFIRMED",
+          "version": 1,
+          "created_at": "2026-11-27T12:00:00+07:00"
+        }
+      },
+      "revise_order": {
+        "method": "PUT",
+        "path": "/api/orders/ORD-2026-9140F6949BEE48B4B2866AA5ABE52364",
+        "request": {
+          "event_date": "2026-11-29",
+          "event_location": "Lokasi uji",
+          "items": [
+            {
+              "menu_id": "MNU-W01",
+              "confirmed_portions": 60
+            }
+          ],
+          "version": 1
+        },
+        "status": 200,
+        "response": {
+          "order_id": "ORD-2026-9140F6949BEE48B4B2866AA5ABE52364",
+          "version": 2,
+          "updated_at": "2026-11-27T12:00:00+07:00"
+        }
+      },
+      "old_revision": {
+        "method": "PUT",
+        "path": "/api/orders/ORD-2026-9140F6949BEE48B4B2866AA5ABE52364",
+        "request": {
+          "event_date": "2026-11-29",
+          "event_location": "Lokasi uji",
+          "items": [
+            {
+              "menu_id": "MNU-W01",
+              "confirmed_portions": 60
+            }
+          ],
+          "version": 1
+        },
+        "status": 409,
+        "response": {
+          "error": {
+            "code": "VERSION_CONFLICT",
+            "message": "Pesanan sudah direvisi. Muat ulang data terbaru sebelum mengirim revisi.",
+            "details": {
+              "order_id": "ORD-2026-9140F6949BEE48B4B2866AA5ABE52364",
+              "sent_version": 1,
+              "current_version": 2
+            }
+          }
+        }
+      },
+      "calculate_without_telemetry": {
+        "method": "POST",
+        "path": "/api/procurement/calculate",
+        "request": {
+          "planning_period": "2026-W48",
+          "include_forecast": true
+        },
+        "status": 201,
+        "response": {
+          "list_id": "SL-2026-W48-7e16d65cbbd5448c9175814f48e8e560",
+          "status": "DRAFT",
+          "planning_period": "2026-W48",
+          "created_at": "2026-11-27T12:00:00+07:00",
+          "items": [
+            {
+              "ingredient_id": "ING-001",
+              "base_unit": "kg",
+              "bom_confirmed_need": 69.0,
+              "ai_additional_forecast": 4.498,
+              "safety_stock": 5.0,
+              "iot_available_stock": 20.5,
+              "stock_status": "STALE",
+              "system_net_recommendation": 57.998
+            },
+            {
+              "ingredient_id": "ING-003",
+              "base_unit": "kg",
+              "bom_confirmed_need": 60.0,
+              "ai_additional_forecast": 4.219,
+              "safety_stock": 8.0,
+              "iot_available_stock": 20.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 52.219
+            },
+            {
+              "ingredient_id": "ING-007",
+              "base_unit": "butir",
+              "bom_confirmed_need": 360.0,
+              "ai_additional_forecast": 49.0,
+              "safety_stock": 50.0,
+              "iot_available_stock": 120.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 339.0
+            },
+            {
+              "ingredient_id": "ING-009",
+              "base_unit": "liter",
+              "bom_confirmed_need": 9.2,
+              "ai_additional_forecast": 0.0,
+              "safety_stock": 3.0,
+              "iot_available_stock": 45.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 0.0
+            },
+            {
+              "ingredient_id": "ING-012",
+              "base_unit": "liter",
+              "bom_confirmed_need": 5.0,
+              "ai_additional_forecast": 0.328,
+              "safety_stock": 3.0,
+              "iot_available_stock": 18.0,
+              "stock_status": "STALE",
+              "system_net_recommendation": 0.0
+            }
+          ],
+          "warnings": [
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-001",
+              "message": "Periksa stok fisik Beras sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-003",
+              "message": "Periksa stok fisik Ayam sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-007",
+              "message": "Periksa stok fisik Telur sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-009",
+              "message": "Periksa stok fisik Santan sebelum menyetujui."
+            },
+            {
+              "code": "STALE_STOCK",
+              "ingredient_id": "ING-012",
+              "message": "Periksa stok fisik Minyak goreng sebelum menyetujui."
+            }
+          ],
+          "include_forecast": true,
+          "forecast_run_id": "FC-2026-W48-9d0f635a1fcd4d1f9785f5e5ab9ff477",
+          "model_version": "xgb-v1-f9a770b940f71fc8"
+        }
+      }
+    }
+  },
+  "d2_deterministic_rice_fixture_kg": 37.5
+}

@@ -286,3 +286,23 @@ def test_missing_corrupt_or_incompatible_model(tmp_path, client_factory):
     (tmp_path / "model.ubj").write_bytes(b"broken")
     with pytest.raises(ForecastError):
         Predictor.load(tmp_path)
+
+
+@pytest.mark.parametrize("label, incompatible", [
+    ("native", "target_native = fulfilled_remaining"),
+    ("model_target", "target_scaled = target_native"),
+])
+def test_loader_rejects_incompatible_target_contract(tmp_path, label, incompatible):
+    import json
+    import shutil
+
+    from ai_forecast.predictor import ForecastError, Predictor
+
+    shutil.copy(ARTIFACT / "model.ubj", tmp_path)
+    manifest = json.loads((ARTIFACT / "manifest.json").read_text(encoding="utf-8"))
+    manifest["target"][label] = incompatible
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ForecastError) as exc:
+        Predictor.load(tmp_path)
+    assert (exc.value.status, exc.value.code) == (500, "MODEL_UNAVAILABLE")

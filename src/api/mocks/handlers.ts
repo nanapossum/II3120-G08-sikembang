@@ -117,10 +117,9 @@ export const handlers = [
     const out = lists
       .filter((l) => l.status === status && (!period || l.planning_period === period))
       .map((l) => {
-        if (status !== 'SENT_TO_PFA') return l
-        const items = l.items.filter((i) => (i.ppic_final_qty ?? 0) > 0)
         // The mock PFA screen requests all sent lists. The mock PPIC screen requests a period.
-        if (period) return { ...l, items }
+        if (status !== 'SENT_TO_PFA' || period) return l
+        const items = l.items.filter((i) => (i.ppic_final_qty ?? 0) > 0)
         return {
           list_id: l.list_id,
           planning_period: l.planning_period,

@@ -1,0 +1,44 @@
+SiKembang Sprint 7 - ringkasan verifikasi 27 November 2026 (WIB)
+Baseline e869edf520f5bdd56ec61b47d0046200bc52c5bc | origin/dev 1a775ca667b0c537f2678d152d49f79da3806a6f
+Lingkungan uji Python 3.13.2, Node v24.19.0, npm 11.17.0
+
+Python clean venv: install lockfile + package editable; pip check exit 0, No broken requirements found.
+npm ci --prefix ml/runtime/sprint7/npm-clean --offline --no-audit --no-fund: exit 0, 244 packages.
+
+rtk proxy ml/runtime/sprint7/venv/Scripts/python.exe -m pytest ml/tests -q -p no:cacheprovider
+OMP_NUM_THREADS=2
+Exit 0, 405 passed, 1 warning in 176.74s (0:02:56).
+Warning: Starlette TestClient dengan httpx deprecated.
+Seleksi baseline Orders, Inventory, Procurement, Draft, Lists, Inference: exit 0, 179 lulus.
+Seleksi final Auth dan Draft: exit 0, 75 lulus dalam 76.08s.
+Seleksi final ShoppingList dan Inventory: exit 0, 71 lulus dalam 98.87s.
+Seleksi final ML: exit 0, 136 lulus dalam 64.03s.
+Seleksi final integration forecast, feedback, procurement: exit 0, 42 lulus dalam 29.75s.
+
+rtk proxy npm.cmd run lint
+Exit 0.
+rtk proxy npm.cmd test
+Exit 0, Test Files 9 passed (9), Tests 34 passed (34).
+rtk proxy npm.cmd run build
+Exit 0, tsc --noEmit dan Vite 8.3.8, 255 modules transformed, build Vite 1.54s.
+Peringatan ukuran chunk 500 kB. Chunk JS utama 551.98 kB, gzip 170.91 kB.
+
+Regresi yang direproduksi sebelum perbaikan:
+- Kunci SYSTEM yang bertepatan dengan registry DEVICE: draf 201 sebelum fix, 403 sesudah fix.
+- Approval g/ml: 422 sebelum fix, 200 dan kuantitas kanonis sesudah fix.
+- Audit PPIC daftar terkirim: keputusan nol tersaring sebelum fix, terlihat sesudah fix.
+- Mock projection: satu dari lima baris sebelum fix, lima untuk PPIC dan satu untuk PFA sesudah fix.
+- Metadata target native/transformasi tidak kompatibel: dua mutasi diterima sebelum fix, ditolak sesudah fix.
+
+rtk proxy ml/runtime/sprint7/venv/Scripts/python.exe -X utf8 docs/testing/verify_sprint7.py --cutoff 2026-11-27T12:00:00+07:00
+Exit 0; 38 HTTP receipts; 11 operasi bisnis; port loopback; restart dan integritas SQLite lulus.
+
+rtk proxy node ml/testing/verify_sprint7_browser.mjs --preview
+SIKEMBANG_TEST_PYTHON=ml/runtime/sprint7/venv/Scripts/python.exe
+Exit 0; 20 respons API live; MSW diverifikasi pada mode mock; 0 respons API live melalui worker.
+
+rtk proxy ml/.venv/Scripts/python.exe docs/testing/verify_sprint7_firmware.py
+Exit 0; 9 kelompok uji host; build esp32:esp32:esp32 lulus, Arduino CLI 1.5.1, core 2.0.17.
+Arduino CLI dan Windows mendeteksi 0 port serial. Verifikasi fisik BLOCKED.
+
+Bukti rinci HTTP, browser, dan ML disimpan di folder ini. Bukti firmware berada di .ai-context.

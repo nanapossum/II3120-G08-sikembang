@@ -30,6 +30,12 @@ _UNIT_CONVERSIONS = {"g": ("kg", 1000), "ml": ("liter", 1000)}
 BaseUnit = Literal["kg", "liter", "butir"]
 
 
+def canonical_quantity(value: float, unit: str) -> tuple[float, str]:
+    """Normalize the compatible units listed in D2 Table 9.9."""
+    base_unit, divisor = _UNIT_CONVERSIONS.get(unit, (unit, 1))
+    return value / divisor, base_unit
+
+
 class TelemetryRequest(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
@@ -143,8 +149,7 @@ class InventoryIoTService:
         received_at = self._now()
         log = _log_packet(body, received_at, principal)
         error = _packet_error(body, principal, received_at)
-        base_unit, divisor = _UNIT_CONVERSIONS.get(body.unit, (body.unit, 1))
-        stored_value = body.measured_weight / divisor
+        stored_value, base_unit = canonical_quantity(body.measured_weight, body.unit)
 
         with self._sessions.begin() as session:
             if error is None:

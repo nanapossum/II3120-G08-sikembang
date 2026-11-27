@@ -18,6 +18,11 @@ from .splits import split_for
 PARTITIONS = ("train", "validation", "test", "purged")
 WEEK = timedelta(weeks=1)
 QUANTITIES = (*LAGS, "prev_error_adj", "confirmed_bom")
+TARGET_CONTRACT = {
+    "native": "target_native = max(0, fulfilled_remaining - confirmed_bom_native)",
+    "model_target": "target_scaled = target_native / scale",
+    "scale": "max(1 canonical unit, mean(lag_1_native .. lag_4_native))",
+}
 
 
 @dataclass(frozen=True)
@@ -104,6 +109,8 @@ def read_bundle(directory: Path):
     expected_names = [*MODEL_COLUMNS, *(f"ingredient_{key}" for key in sorted(metadata["units"]))]
     if metadata["source"] != "synthetic" or metadata["model_features"] != expected_names:
         raise ValueError("unexpected synthetic feature schema or order")
+    if any(metadata["labels"].get(key) != value for key, value in TARGET_CONTRACT.items()):
+        raise ValueError("unexpected additional-demand target contract")
     required = {*(f"{partition}.csv" for partition in PARTITIONS), "weekly_feedback.jsonl"}
     if not required <= metadata["sha256"].keys():
         raise ValueError("required dataset checksum missing")

@@ -93,7 +93,7 @@ rtk proxy ml\.venv\Scripts\python.exe -m ai_forecast.feedback_demo --output .ai-
 rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q -p no:cacheprovider
 ```
 
-Demo mencatat neraca stok sintetis dan respons ASGI dari model yang sama pada dua cutoff, termasuk contoh ketika koreksi mencapai batas clipping. Setiap cutoff membandingkan snapshot dengan rekonsiliasi valid dan snapshot pembanding dengan fallback netral. Data fisik dan backend InventoryIoTService belum tersedia di checkout.
+Demo Sprint 5 mencatat neraca stok sintetis dan respons ASGI dari model yang sama pada dua cutoff, termasuk contoh ketika koreksi mencapai batas clipping. Setiap cutoff membandingkan snapshot dengan rekonsiliasi valid dan snapshot pembanding dengan fallback netral. Backend live dan integrasi perangkat dijelaskan pada bagian berikut.
 
 ## Backend dan SQLite Sprint 6A
 

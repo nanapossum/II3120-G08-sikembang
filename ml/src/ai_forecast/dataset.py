@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import numpy as np
 
+from .evaluation_data import TARGET_CONTRACT
 from .features import FLAGS, LAGS, InsufficientHistory, WeeklyDemand, build_features, feature_names
 from .feedback import INVENTORY_PARAMETERS, build_feedback
 from .fixtures import CONFIG_DIR, load_fixtures, week_start
@@ -212,9 +213,7 @@ def _build(output, seed, config_dir):
         "splits": split_stats, "units": catalog.units,
         "feedback_reasons_by_example": dict(Counter(r["feedback_reason"] for rows in groups.values() for r in rows)),
         "model_features": names, "feature_dictionary": _feature_dictionary(names),
-        "labels": {"native": "target_native = max(0, fulfilled_remaining - confirmed_bom_native)",
-                   "model_target": "target_scaled = target_native / scale",
-                   "scale": "max(1 canonical unit, mean(lag_1_native .. lag_4_native))",
+        "labels": {**TARGET_CONTRACT,
                    "use": "Only columns in model_features are inputs. Never use fulfilled_remaining or either target as X."},
         "sha256": {p.name: _digest(p) for p in sorted(output.iterdir())},
     }

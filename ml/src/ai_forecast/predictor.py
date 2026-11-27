@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from xgboost.core import XGBoostError
 
-from .evaluation_data import checksum, iso_period
+from .evaluation_data import TARGET_CONTRACT, checksum, iso_period
 from .features import FLAGS, WEEK, InsufficientHistory, WeeklyDemand, build_features, feature_names
 from .feedback import INVENTORY_PARAMETERS, FeedbackRecord
 from .fixtures import CONFIG_DIR, WIB, Catalog, Calendar, load_fixtures, week_start
@@ -133,7 +133,7 @@ class Predictor:
                     or manifest["cutoff"]["day_of_cutoff"] != "include unless already served"
                     or manifest["cutoff"]["lags"] != "four closed consecutive weeks before cutoff week; every lag available by cutoff"
                     or manifest["horizon"] != "remaining current ISO week or complete following ISO week"
-                    or manifest["target"]["scale"] != "max(1 canonical unit, mean(lag_1_native .. lag_4_native))"
+                    or any(manifest["target"][key] != value for key, value in TARGET_CONTRACT.items())
                     or manifest["postprocessing"] != "max(0, scaled prediction) times row scale, half-up to 0.001 kg/liter or 1 butir"
                     or manifest["prev_error_adj"]["applied"] != "once as model input"
                     or manifest["prev_error_adj"]["cutoff"] != "strictly before cutoff"
