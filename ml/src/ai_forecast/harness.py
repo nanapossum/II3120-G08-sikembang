@@ -14,8 +14,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from .api import create_router
 from .evaluation_data import checksum
 from .features import WEEK, WeeklyDemand
-from .feedback import FeedbackSources, Movement, ReferenceRun, SensorReading
-from .feedback_provider import ApprovedFeedbackWeek, HistoricalFeedbackProvider
+from .feedback_provider import (ApprovedFeedbackWeek, HistoricalFeedbackProvider,
+                               parse_feedback_sources, parse_iso_fields)
 from .fixtures import WIB, load_fixtures, week_start
 from .orders import DemandIndex, Item, Version
 from .predictor import (ConfirmedDemand, ForecastError, ForecastService, ForecastSnapshot,
@@ -50,33 +50,11 @@ def _read_records(directory, metadata, name):
         yield from map(json.loads, file)
 
 
-def _convert(row, dates=(), instants=()):
-    return {**row, **{key: date.fromisoformat(row[key]) for key in dates if row[key] is not None},
-            **{key: datetime.fromisoformat(row[key]) for key in instants if row[key] is not None}}
-
-
 def _order(data):
-    row = _convert(data, ("event_date",), ("created_at", "confirmed_at", "effective_at",
-                                          "available_at", "fulfilled_at"))
+    row = parse_iso_fields(data, ("event_date",), ("created_at", "confirmed_at", "effective_at",
+                                                 "available_at", "fulfilled_at"))
     row["items"] = tuple(Item(**item) for item in row["items"])
     return Version(**row)
-
-
-def _feedback(data):
-    fields = _convert(data, ("week",), ("approved_at",))
-    run = fields["reference_run"]
-    if run is not None:
-        run = _convert(run, ("target_week",), ("cutoff_at", "published_at"))
-        run["label_weeks"] = tuple(date.fromisoformat(day) for day in run["label_weeks"])
-        fields["reference_run"] = ReferenceRun(**run)
-    for name in ("opening", "closing"):
-        sensor = fields[name]
-        if sensor is not None:
-            fields[name] = SensorReading(**_convert(sensor, instants=("measured_at", "received_at")))
-    if fields["movements"] is not None:
-        fields["movements"] = tuple(Movement(**_convert(row, ("production_week",), ("occurred_at", "available_at")))
-                                    for row in fields["movements"])
-    return FeedbackSources(**fields)
 
 
 class ReplaySnapshots:
@@ -96,13 +74,13 @@ class ReplaySnapshots:
         self._history = {}
         for row in _read_records(directory, manifest, "weekly_demand.jsonl"):
             row.pop("source")
-            demand = WeeklyDemand(**_convert(row, ("monday",), ("available_at",)))
+            demand = WeeklyDemand(**parse_iso_fields(row, ("monday",), ("available_at",)))
             self._history[demand.monday, demand.ingredient_id] = HistoryEntry(
                 demand, manifest["units"][demand.ingredient_id]
             )
         feedback = {}
         for row in _read_records(directory, manifest, "weekly_feedback.jsonl"):
-            sources = _feedback(row["sources"])
+            sources = parse_feedback_sources(row["sources"])
             if sources.source != "SIMULATED":
                 raise ValueError("replay requires explicitly synthetic historical feedback")
             references = (sources.reference_run,) if sources.reference_run is not None else ()

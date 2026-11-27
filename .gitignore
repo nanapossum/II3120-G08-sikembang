@@ -13,5 +13,6 @@ pytest-cache-files-*/
 ml/build/
 ml/generated/
 ml/artifacts/
+ml/runtime/
 .github/workflows/copilot-instructions.md
 docs/wireframe-spec.md

@@ -58,7 +58,10 @@ def _validate_row(row: Version, catalog: Catalog) -> None:
     if row.status not in {"DRAFT", "CONFIRMED", "CANCELLED", "FULFILLED"}:
         raise ValueError("Unknown order status")
     if row.confirmed_at is not None:
-        if not row.created_at < _local(row.confirmed_at) <= row.effective_at or row.status == "DRAFT":
+        confirmed = _local(row.confirmed_at)
+        allows_direct_confirmation = row.source in {"live", "operational"}
+        if (not row.created_at <= confirmed <= row.effective_at or row.status == "DRAFT"
+                or (confirmed == row.created_at and not allows_direct_confirmation)):
             raise ValueError("Invalid confirmation timestamp")
     elif row.status in {"CONFIRMED", "FULFILLED"}:
         raise ValueError("Missing confirmation")

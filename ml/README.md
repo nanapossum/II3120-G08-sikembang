@@ -94,3 +94,35 @@ rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q -p no:cacheprovider
 ```
 
 Demo mencatat neraca stok sintetis dan respons ASGI dari model yang sama pada dua cutoff, termasuk contoh ketika koreksi mencapai batas clipping. Setiap cutoff membandingkan snapshot dengan rekonsiliasi valid dan snapshot pembanding dengan fallback netral. Data fisik dan backend InventoryIoTService belum tersedia di checkout.
+
+## Backend dan SQLite Sprint 6A
+
+Jalankan dari root repo pada PowerShell. Gunakan venv Python 3.13 yang sama dengan Sprint 2–5. Pasang kebutuhan backend dari lockfile lalu pasang paket editable bila belum tersedia.
+
+```powershell
+rtk proxy ml\.venv\Scripts\python.exe -m pip install -r ml/requirements-dev.lock
+rtk proxy ml\.venv\Scripts\python.exe -m pip install --no-build-isolation --no-deps -e ml
+New-Item -ItemType Directory -Force ml/runtime
+Copy-Item ml/backend.env.example.ps1 ml/runtime/backend.env.ps1
+```
+
+Isi `ml/runtime/backend.env.ps1` dengan signing secret acak sedikitnya 32 byte, tiga password berbeda (12–128 karakter), dan dua device key acak berbeda (32–256 karakter ASCII tanpa spasi). Contoh sumber random adalah `secrets.token_urlsafe(32)` dari Python. Pertahankan rahasia lokal di environment atau berkas runtime yang diabaikan Git.
+
+```powershell
+. .\ml\runtime\backend.env.ps1
+rtk proxy ml\.venv\Scripts\python.exe -m sikembang_backend.manage init-db
+rtk proxy ml\.venv\Scripts\python.exe -m sikembang_backend.manage seed
+rtk proxy ml\.venv\Scripts\python.exe -m uvicorn sikembang_backend.app:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+Server menyediakan `GET /api/health`, `/docs`, `POST /api/auth/login`, `GET /api/auth/me`, dan router D2 `POST /api/ai/predict`. Login menerima JSON `username` dan `password`, lalu menyediakan `access_token` untuk header Authorization Bearer. MARKETING, PPIC, dan PFA adalah peran dashboard. X-Device-Key memakai dependency khusus perangkat yang siap dipasang pada route telemetry. SYSTEM dipakai untuk pemanggilan internal.
+
+Default seed mengikuti minggu berjalan WIB. Untuk replay yang dibekukan, isi `SIKEMBANG_DEMO_CUTOFF` dengan timestamp WIB yang sesuai, misalnya `2025-03-05T12:00:00+07:00`, dan jalankan `seed --period 2025-W10`. Gunakan path SQLite tersendiri untuk replay bila ingin mempertahankan demo berjalan. Seeder memasukkan baris yang belum ada dan memeriksa konflik kredensial serta kelayakan histori pada seed ulang. Perubahan kredensial yang sudah tersimpan memerlukan alur administrasi terpisah.
+
+Artefak dan bundle Sprint 2–3 dapat dibangkitkan melalui perintah di bagian sebelumnya bila belum tersedia. Beri `SIKEMBANG_ARTIFACT` path direktori artefak untuk mengaktifkan inferensi. Dengan konfigurasi model kosong, health dan login tetap dapat dipakai dan endpoint AI memberi `500 MODEL_UNAVAILABLE`. Konfigurasi path model yang invalid menghentikan startup. Init database adalah langkah eksplisit.
+
+Vite dapat meneruskan `/api` melalui `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000`. Klien frontend live sudah membaca `sessionStorage.access_token`, sedangkan layar login dan workflow bisnis menyusul pada sprint berikutnya. Uji backend 6A melalui OpenAPI atau HTTP client. Skema dan provenance dirinci di [dokumentasi data backend](../docs/backend-data.md).
+
+```powershell
+rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q -p no:cacheprovider
+```

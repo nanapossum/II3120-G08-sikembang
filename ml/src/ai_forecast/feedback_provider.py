@@ -5,9 +5,34 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time
 from typing import Protocol
 
-from .feedback import (WEEK, FeedbackRecord, FeedbackSources, ReferenceRun,
-                       reconcile, reference_is_compatible)
+from .feedback import (WEEK, FeedbackRecord, FeedbackSources, Movement, ReferenceRun,
+                       SensorReading, reconcile, reference_is_compatible)
 from .fixtures import WIB, week_start
+
+
+def parse_iso_fields(row, dates=(), instants=()):
+    return {**row, **{key: date.fromisoformat(row[key]) for key in dates if row[key] is not None},
+            **{key: datetime.fromisoformat(row[key]) for key in instants if row[key] is not None}}
+
+
+def parse_feedback_sources(data: Mapping) -> FeedbackSources:
+    """Decode normalized JSON feedback evidence used by the replay bundle and backend."""
+    fields = parse_iso_fields(data, ("week",), ("approved_at",))
+    run = fields["reference_run"]
+    if run is not None:
+        run = parse_iso_fields(run, ("target_week",), ("cutoff_at", "published_at"))
+        run["label_weeks"] = tuple(date.fromisoformat(day) for day in run["label_weeks"])
+        fields["reference_run"] = ReferenceRun(**run)
+    for name in ("opening", "closing"):
+        sensor = fields[name]
+        if sensor is not None:
+            fields[name] = SensorReading(**parse_iso_fields(sensor, instants=("measured_at", "received_at")))
+    if fields["movements"] is not None:
+        fields["movements"] = tuple(
+            Movement(**parse_iso_fields(row, ("production_week",), ("occurred_at", "available_at")))
+            for row in fields["movements"]
+        )
+    return FeedbackSources(**fields)
 
 
 @dataclass(frozen=True)

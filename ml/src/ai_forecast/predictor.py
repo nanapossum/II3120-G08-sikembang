@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from numbers import Real
 from pathlib import Path
@@ -95,6 +95,7 @@ class ForecastRun:
     source: str
     feedback_reasons: Mapping[str, str]
     feedback_audit: Mapping[str, FeedbackAudit]
+    confirmed_bom: Mapping[str, float] = field(default_factory=dict)
 
 
 class SnapshotProvider(Protocol):
@@ -272,6 +273,6 @@ class ForecastService:
                           {flag: rows[0][flag] for flag in FLAGS}, items, cutoff, snapshot.snapshot_id,
                           snapshot.bom_version, predictor.calendar.version, snapshot.source,
                           {identifier: row["feedback_reason"] for identifier, row in zip(ids, rows, strict=True)},
-                          feedback_audit)
+                          feedback_audit, {identifier: snapshot.confirmed[identifier].quantity for identifier in ids})
         self._runs.save(run)
         return run
