@@ -142,3 +142,7 @@ Untuk database 6B yang sudah ada, jalankan kembali `init-db` pada path yang sama
 Dengan JWT PPIC pada Swagger atau klien HTTP, kirim `POST /api/procurement/calculate` dengan `planning_period` dari output seed dan `include_forecast` bernilai `true` atau `false`. Bawaan adalah `true`. Setiap periode dapat memiliki satu daftar D2. Gunakan database demo terpisah untuk membandingkan dua mode pada periode yang sama.
 
 `POST /api/shopping-lists` menerima otorisasi layanan SYSTEM. Jalur normal memanggil service draf di proses FastAPI yang sama. Untuk demonstrasi endpoint SYSTEM melalui HTTP, tetapkan `SIKEMBANG_SYSTEM_KEY` dengan rahasia tersendiri dari environment lokal dan kirim sebagai `X-System-Key`. Header tersebut juga berlaku pada baca order, baca stok, dan prediksi yang diizinkan untuk SYSTEM. Templat environment menyertakan konfigurasi opsional itu. [Arsitektur pengadaan dan feedback](../docs/backend-data.md#procurement-dan-feedback-sprint-6c)
+
+## Telemetry ESP32 Sprint 6E
+
+Seed menyediakan identitas simulasi `SNS-GDG-01` untuk beras dan `SNS-KLK-01` untuk ayam. Untuk perangkat fisik beras yang telah diidentifikasi, atur `SIKEMBANG_DEVICE_ESP32_KEY` dan jalankan `register-physical-rice --location` dengan lokasi yang sesuai. Registry menambahkan binding khusus `SNS-GDG-ESP32-01` ke `ING-001` dalam kg dan menyimpan hash kunci. Log menyimpan sumber serta lokasi perangkat pada saat sampel diterima. [Firmware, LAN, dan walkthrough](../firmware/esp32_scale/README.md)

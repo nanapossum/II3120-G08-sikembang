@@ -14,5 +14,6 @@ ml/build/
 ml/generated/
 ml/artifacts/
 ml/runtime/
+firmware/esp32_scale/secrets.h
 .github/workflows/copilot-instructions.md
 docs/wireframe-spec.md
