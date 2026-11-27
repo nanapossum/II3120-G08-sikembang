@@ -32,3 +32,23 @@ Ekspor menggunakan staging sebelum publikasi. Pengulangan dengan output identik 
 Untuk training selanjutnya gunakan hanya 18 kolom pada `model_features` sebagai X, dalam urutan manifest. Label model adalah `target_scaled`. Untuk evaluasi per bahan, kembalikan prediksi ke satuan asli dengan `scale` dan bandingkan dengan `target_native`. Kolom audit mencakup `order_snapshot_id`, kuantitas native, `fulfilled_remaining`, dan `label_available_at`. Memasukkan kolom pemenuhan akhir akan membocorkan jawaban.
 
 `build_features()` adalah jalur bersama replay dan inferensi. Empat lag berasal dari minggu lengkap sebelum minggu cutoff. Minggu yang terbukti nol sah. Minggu yang belum lengkap memicu `InsufficientHistory`. Feedback dipakai setelah rekonsiliasi minggu sebelumnya tersedia secara ketat sebelum cutoff, dengan batas ±25% dari skala bahan. Fitur netral memakai nilai 0 disertai flag ketersediaan. Ringkasan eksplorasi hanya mengakses distribusi train. Test dipertahankan untuk evaluasi akhir.
+
+## Training dan evaluasi Sprint 3
+
+Pasang dependensi dari lockfile CPython 3.13 Windows di atas. Untuk pemasangan dengan resolusi versi sendiri, pasang paket dengan extra `[train,test]`. Jalankan perintah ini dari root repo setelah bundle dataset tersedia.
+
+```powershell
+rtk proxy ml\.venv\Scripts\python.exe -m ai_forecast.train --dataset ml/generated/synthetic-v1 --output ml/artifacts --seed 3120
+rtk proxy ml\.venv\Scripts\python.exe -m ai_forecast.evaluate --dataset ml/generated/synthetic-v1 --artifact ml/artifacts/xgb-v1-f9a770b940f71fc8
+```
+
+Perintah training mencetak direktori run. Gunakan direktori tersebut pada `--artifact`. ID contoh di atas berasal dari bundle dan versi dependensi yang digunakan pada Sprint 3. Untuk mengulang eksperimen sambil mempertahankan run lama, berikan direktori `--output` berbeda.
+
+| Keluaran run | Isi |
+|---|---|
+| `model.ubj` dan `manifest.json` | Model XGBoost native, checksum, versi aktual, urutan fitur, satuan, konfigurasi, rentang fit, dan metrik. |
+| `evaluation.json` | Seleksi validation, ablation, rincian MAE/RMSE/bias per bahan dan kelompok test, serta waktu fit dan inferensi. |
+| `predictions.csv` | Aktual, prediksi model sebelum dan sesudah pembulatan, nol, median historis, replay feedback, dan residual pada origin yang sama. |
+| `charts/` | Enam grafik evaluasi dalam SVG dan PNG. |
+
+XGBoost dipilih dari empat konfigurasi menggunakan MAE ternormalisasi validation. Model terpilih di-fit ulang pada baris train dan validation dengan label yang sudah tersedia saat origin test pertama. Perintah `evaluate` memuat artefak dalam proses Python baru dan memverifikasi ulang skor serta prediksi test melalui model tersimpan. Keluaran model dan evaluasi berada di `ml/artifacts/` yang dikecualikan dari Git. Seluruh skor berasal dari data sintetis.

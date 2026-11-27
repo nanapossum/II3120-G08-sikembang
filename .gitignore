@@ -12,5 +12,6 @@ pytest-cache-files-*/
 *.egg-info/
 ml/build/
 ml/generated/
+ml/artifacts/
 .github/workflows/copilot-instructions.md
 docs/wireframe-spec.md
