@@ -73,6 +73,15 @@ class ForecastItem:
 
 
 @dataclass(frozen=True)
+class FeedbackAudit:
+    source: str
+    reference_run_id: str | None
+    raw_residual: float | None
+    bound: float
+    available_at: datetime | None
+
+
+@dataclass(frozen=True)
 class ForecastRun:
     forecast_run_id: str
     target_period: str
@@ -85,6 +94,7 @@ class ForecastRun:
     calendar_version: str
     source: str
     feedback_reasons: Mapping[str, str]
+    feedback_audit: Mapping[str, FeedbackAudit]
 
 
 class SnapshotProvider(Protocol):
@@ -168,8 +178,8 @@ class Predictor:
                 raise ForecastError(422, "NEGATIVE_VALUE", "Kebutuhan BOM tidak boleh negatif.",
                                     {"ingredient_id": ingredient})
             try:
-                rows.append(build_features(ingredient, target, cutoff, confirmed.quantity, history,
-                                           snapshot.feedback, self.catalog, self.calendar))
+                row = build_features(ingredient, target, cutoff, confirmed.quantity, history,
+                                     snapshot.feedback, self.catalog, self.calendar)
             except InsufficientHistory as exc:
                 reasons = {}
                 for week in exc.missing_weeks:
@@ -187,6 +197,12 @@ class Predictor:
             except (ValueError, TypeError) as exc:
                 raise ForecastError(422, "INVALID_FORECAST_INPUT", "Data snapshot tidak valid untuk prediksi.",
                                     {"ingredient_id": ingredient}) from exc
+            expected_source = "SIMULATED" if snapshot.source == "synthetic" else "PHYSICAL"
+            if (row["feedback_available"]
+                    and snapshot.feedback[origin - WEEK, ingredient].sources.source != expected_source):
+                raise ForecastError(422, "INVALID_FORECAST_INPUT", "Sumber feedback tidak cocok dengan snapshot.",
+                                    {"ingredient_id": ingredient})
+            rows.append(row)
         return rows
 
     def predict(self, target, cutoff, ingredient_ids, snapshot):
@@ -240,9 +256,22 @@ class ForecastService:
             snapshot = self._snapshots(target, cutoff, ids)
         rows = predictor.prepare(target, cutoff, ids, snapshot)
         items = predictor._predict_prepared(ids, rows)
+        feedback_audit = {}
+        for identifier, row in zip(ids, rows, strict=True):
+            bound = INVENTORY_PARAMETERS["clip_fraction"] * row["scale"]
+            if not row["feedback_available"]:
+                feedback_audit[identifier] = FeedbackAudit("UNAVAILABLE", None, None, bound, None)
+                continue
+            record = snapshot.feedback[origin - WEEK, identifier]
+            reference = record.sources.reference_run
+            feedback_audit[identifier] = FeedbackAudit(
+                record.sources.source, reference.run_id if reference else None,
+                record.raw_residual, bound, record.available_at
+            )
         run = ForecastRun(f"FC-{target_period}-{uuid4().hex}", target_period, predictor.model_version,
                           {flag: rows[0][flag] for flag in FLAGS}, items, cutoff, snapshot.snapshot_id,
                           snapshot.bom_version, predictor.calendar.version, snapshot.source,
-                          {identifier: row["feedback_reason"] for identifier, row in zip(ids, rows, strict=True)})
+                          {identifier: row["feedback_reason"] for identifier, row in zip(ids, rows, strict=True)},
+                          feedback_audit)
         self._runs.save(run)
         return run

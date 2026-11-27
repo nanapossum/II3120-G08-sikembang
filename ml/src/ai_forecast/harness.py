@@ -14,7 +14,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from .api import create_router
 from .evaluation_data import checksum
 from .features import WEEK, WeeklyDemand
-from .feedback import FeedbackSources, Movement, ReferenceRun, SensorReading, reconcile
+from .feedback import FeedbackSources, Movement, ReferenceRun, SensorReading
+from .feedback_provider import ApprovedFeedbackWeek, HistoricalFeedbackProvider
 from .fixtures import WIB, load_fixtures, week_start
 from .orders import DemandIndex, Item, Version
 from .predictor import (ConfirmedDemand, ForecastError, ForecastService, ForecastSnapshot,
@@ -75,7 +76,7 @@ def _feedback(data):
     if fields["movements"] is not None:
         fields["movements"] = tuple(Movement(**_convert(row, ("production_week",), ("occurred_at", "available_at")))
                                     for row in fields["movements"])
-    return reconcile(FeedbackSources(**fields))
+    return FeedbackSources(**fields)
 
 
 class ReplaySnapshots:
@@ -99,10 +100,16 @@ class ReplaySnapshots:
             self._history[demand.monday, demand.ingredient_id] = HistoryEntry(
                 demand, manifest["units"][demand.ingredient_id]
             )
-        self._feedback = {}
+        feedback = {}
         for row in _read_records(directory, manifest, "weekly_feedback.jsonl"):
-            record = _feedback(row["sources"])
-            self._feedback[record.sources.week, record.sources.ingredient_id] = record
+            sources = _feedback(row["sources"])
+            if sources.source != "SIMULATED":
+                raise ValueError("replay requires explicitly synthetic historical feedback")
+            references = (sources.reference_run,) if sources.reference_run is not None else ()
+            feedback[sources.week, sources.ingredient_id] = ApprovedFeedbackWeek(
+                sources, references, ledger_complete=sources.movements is not None, production_complete=True
+            )
+        self._feedback = HistoricalFeedbackProvider(lambda week, ingredient, _: feedback.get((week, ingredient)))
 
     def __call__(self, target, cutoff, ingredient_ids):
         if target < self._first or target + timedelta(days=6) > self._last:
@@ -111,11 +118,11 @@ class ReplaySnapshots:
         origin = week_start(cutoff.astimezone(WIB).date())
         lag_keys = [(origin - offset * WEEK, identifier) for offset in range(1, 5) for identifier in ingredient_ids]
         history = {key: self._history[key] for key in lag_keys if key in self._history}
-        feedback = {key: self._feedback[key] for key in lag_keys[:len(ingredient_ids)] if key in self._feedback}
+        units = {identifier: self._catalog.units[identifier] for identifier in ingredient_ids}
         return ForecastSnapshot(
             snapshot_id, target, cutoff, self._catalog.version,
-            {key: ConfirmedDemand(confirmed[key], self._catalog.units[key]) for key in ingredient_ids},
-            history, feedback, "synthetic",
+            {key: ConfirmedDemand(confirmed[key], unit) for key, unit in units.items()},
+            history, self._feedback.load(cutoff, units), "synthetic",
         )
 
 

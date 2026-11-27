@@ -1,4 +1,4 @@
-"""Synthetic weekly inventory reconciliation and point-in-time forecast feedback."""
+"""Weekly inventory reconciliation and synthetic replay generation."""
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
@@ -119,13 +119,16 @@ def _native_quantity(quantity: float, unit: str) -> bool:
     return isfinite(quantity) and (unit != "butir" or float(quantity).is_integer())
 
 
-def _valid_reading(reading, sources, earliest, latest):
+def _valid_reading(reading, sources, earliest, latest, accepted_sensor_ids):
     if not (_aware(reading.measured_at) and _aware(reading.received_at)):
         return False
     delay = reading.received_at - reading.measured_at
+    if sources.source == "SIMULATED":
+        accepted = reading.validation_status == "VALID" and reading.sensor_id == f"SIM-{sources.ingredient_id}"
+    else:
+        accepted = reading.validation_status == "ACCEPTED" and reading.sensor_id in accepted_sensor_ids
     return (
-        reading.validation_status == "VALID"
-        and reading.sensor_id == f"SIM-{sources.ingredient_id}"
+        accepted
         and (reading.ingredient_id, reading.location_id, reading.unit)
         == (sources.ingredient_id, sources.location_id, sources.unit)
         and _native_quantity(reading.quantity, sources.unit) and reading.quantity >= 0
@@ -134,9 +137,11 @@ def _valid_reading(reading, sources, earliest, latest):
     )
 
 
-def _valid_run(run, sources, start):
-    if (run.source not in {"baseline_replay", "model_replay", "live"}
-            or sources.week.weekday() != 0 or run.cutoff_at != start or run.published_at < start
+def reference_is_compatible(run, sources, start):
+    allowed_sources = {"live"} if sources.source == "PHYSICAL" else {"baseline_replay", "model_replay"}
+    if (run.source not in allowed_sources or not _aware(run.published_at)
+            or sources.week.weekday() != 0 or run.cutoff_at != start
+            or not start <= run.published_at < start + WEEK
             or (run.target_week, run.ingredient_id, run.unit) != (sources.week, sources.ingredient_id, sources.unit)
             or not run.run_id or not run.snapshot_id or not run.model_version
             or not all(isfinite(x) and x >= 0 for x in (run.confirmed_bom, run.predicted_demand))):
@@ -148,7 +153,7 @@ def _valid_run(run, sources, start):
     return True
 
 
-def reconcile(sources: FeedbackSources) -> FeedbackRecord:
+def reconcile(sources: FeedbackSources, *, accepted_sensor_ids: frozenset[str] = frozenset()) -> FeedbackRecord:
     """Reconcile one immutable approval snapshot, whose ledger covers [Monday, Monday)."""
     start = _midnight(sources.week)
     end = start + WEEK
@@ -160,6 +165,8 @@ def reconcile(sources: FeedbackSources) -> FeedbackRecord:
     if available is None or not _aware(available) or available < end:
         available = None
         return reject("UNCLOSED_LEDGER")
+    if sources.source not in {"SIMULATED", "PHYSICAL"}:
+        return reject("INVALID_SOURCE")
     run = sources.reference_run
     if run is None:
         return reject("NO_REFERENCE_RUN")
@@ -167,7 +174,7 @@ def reconcile(sources: FeedbackSources) -> FeedbackRecord:
         return reject("INVALID_REFERENCE_RUN")
     if run.published_at > available:
         return reject("NO_REFERENCE_RUN")
-    if not _valid_run(run, sources, start):
+    if not reference_is_compatible(run, sources, start):
         return reject("INVALID_REFERENCE_RUN")
     if sources.movements is None:
         return reject("UNCLOSED_LEDGER")
@@ -176,8 +183,8 @@ def reconcile(sources: FeedbackSources) -> FeedbackRecord:
         return reject("MISSING_SENSOR")
     window = timedelta(minutes=INVENTORY_PARAMETERS["boundary_window_minutes"])
     # Readings outside this ledger's coverage would require movements from an adjacent week.
-    if not (_valid_reading(opening, sources, start, start + window)
-            and _valid_reading(closing, sources, end - window, end)
+    if not (_valid_reading(opening, sources, start, start + window, accepted_sensor_ids)
+            and _valid_reading(closing, sources, end - window, end, accepted_sensor_ids)
             and max(opening.received_at, closing.received_at) <= available):
         return reject("INVALID_SENSOR")
     open_balance, close_balance = opening.quantity, closing.quantity

@@ -75,3 +75,22 @@ Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8010/api/ai/predict' -Head
 `SIKEMBANG_ARTIFACT` dan `SIKEMBANG_REPLAY_DATASET` dapat menunjuk artefak serta bundle yang cocok. Untuk mereproduksi 422 riwayat kurang, mulai ulang harness dengan `SIKEMBANG_REPLAY_CUTOFF=2020-12-21T12:00:00+07:00` dan minta `2020-W52`. Harness ini memakai order dan feedback sintetis, bearer token lokal, dan penyimpanan run dalam memori satu proses.
 
 Backend bersama dapat memanggil `create_router(service, identity_role)`. Dependensi `identity_role` harus memperoleh peran dari principal yang sudah terautentikasi. Isi `ForecastService` dengan satu `Predictor.load(...)` per proses, implementasi `SnapshotProvider` dan `RunRepository` backend. ProcurementCalcService bisa memanggil `service.forecast(planning_period, ingredient_ids, cutoff=cutoff, snapshot=snapshot)` secara langsung. Gunakan snapshot order/BOM dan cutoff yang sama dengan kalkulasi. Komponen AI yang dikonsumsi adalah `run.items[].predicted_demand`.
+
+## Feedback AI–IoT Sprint 5
+
+`HistoricalFeedbackProvider(reader).load(cutoff, ingredient_units)` menghasilkan mapping untuk `ForecastSnapshot.feedback`. Provider meminta satu minggu ISO tertutup sebelum minggu cutoff WIB, termasuk saat targetnya minggu depan. Reader mengembalikan bukti minggu tersegel terbaru yang tersedia **sebelum** cutoff tersebut. Run referensi harus berasal dari cutoff Senin 00.00 WIB dan diterbitkan dalam minggu itu sebelum pemenuhan pertama, bila ada. Jika beberapa kandidat memenuhi syarat, provider memakai waktu publikasi paling awal lalu ID untuk seri.
+
+Untuk sumber fisik, reader backend perlu memasok status InventoryIoTService `ACCEPTED`, pemetaan sensor–bahan–lokasi yang berlaku pada saat pembacaan, nilai yang sudah dikonversi ke satuan dasar, status penutupan ledger, dan atribusi produksi beserta waktu pemenuhan pertama. Gunakan `PHYSICAL` hanya untuk bukti tersebut dengan run operasional `live`. Replay dari bundle Sprint 2 memakai `SIMULATED` dengan run baseline sintetis. Detail sumber dan alasan fallback disimpan pada run secara internal tanpa menambah field respons D2.
+
+Reader operasional perlu mengambil waktu publikasi aktual dan BOM dari snapshot asal run. Jika memakai run `model_replay`, cantumkan batas ketersediaan label fit model per ID run pada `replay_fit_available_at`. Batas itu harus berada pada atau sebelum cutoff referensinya. Predictor mencegah koreksi sintetis dipakai pada snapshot operasional. Audit run menyimpan sumber, ID referensi, residual mentah, batas koreksi, dan ketersediaan bukti. Koreksi terpakai tersimpan pada item forecast.
+
+Rekonsiliasi mengembalikan stok batas minggu lalu menghitung pemakaian dari stok awal, penerimaan, transfer, retur, waste, dan koreksi inventaris bertanda. Nilainya harus cocok dengan produksi yang dapat diatribusikan. Residual adalah `max(0, pemakaian teratribusi − BOM pada run referensi) − prediksi tambahan run referensi`. Batasi residual ke ±25% skala hasil empat lag dan masukkan ke XGBoost satu kali. Feedback yang belum layak menghasilkan nilai netral 0 serta alasan audit. Galat nol dengan bukti sah tetap memiliki flag ketersediaan 1.
+
+Jalankan demo dari root repo setelah bundle dan artefak terlatih tersedia.
+
+```powershell
+rtk proxy ml\.venv\Scripts\python.exe -m ai_forecast.feedback_demo --output .ai-context/SPRINT_5_FEEDBACK_EVIDENCE.json
+rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q -p no:cacheprovider
+```
+
+Demo mencatat neraca stok sintetis dan respons ASGI dari model yang sama pada dua cutoff, termasuk contoh ketika koreksi mencapai batas clipping. Setiap cutoff membandingkan snapshot dengan rekonsiliasi valid dan snapshot pembanding dengan fallback netral. Data fisik dan backend InventoryIoTService belum tersedia di checkout.

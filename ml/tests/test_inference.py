@@ -213,6 +213,55 @@ def test_replay_feature_and_output_parity(context):
     assert predictor.predict(target, cutoff, ("ING-001",), snapshot)[0].predicted_demand == float(expected["xgboost"])
 
 
+def test_feedback_reaches_api_once_and_keeps_internal_provenance(client_factory, context):
+    from ai_forecast.model import load_artifact, native_predictions, predict
+    from ai_forecast.predictor import parse_period
+
+    predictor, provider = context
+    target = parse_period("2025-W10")
+    ids = ("ING-001",)
+    snapshot = provider(target, CUTOFF, ids)
+    row, = predictor.prepare(target, CUTOFF, ids, snapshot)
+    assert row["feedback_available"] == 1
+    assert row["prev_error_adj"] == pytest.approx(9.792)
+
+    model, _ = load_artifact(ARTIFACT, predictor.names)
+    matrix = [[row["model_features"][name] for name in predictor.names]]
+    expected, = native_predictions(predict(model, matrix, predictor.names), [row["scale"]], ["kg"])
+    payload = {"target_period": "2025-W10", "ingredient_ids": list(ids)}
+    client, runs = client_factory()
+    response = client.post("/api/ai/predict", json=payload, headers=PPIC)
+    assert response.status_code == 201
+    parsed = response.json()
+    assert parsed["items"][0]["predicted_demand"] == expected
+    assert parsed["items"][0]["prev_error_adj"] == pytest.approx(9.792)
+    trace = runs.get(parsed["forecast_run_id"]).feedback_audit["ING-001"]
+    assert trace.source == "SIMULATED"
+    assert trace.reference_run_id == snapshot.feedback[next(iter(snapshot.feedback))].sources.reference_run.run_id
+    assert trace.raw_residual == pytest.approx(9.792)
+    assert trace.bound == pytest.approx(0.25 * row["scale"])
+    assert trace.available_at is not None and trace.available_at < CUTOFF
+
+    empty_client, empty_runs = client_factory(
+        snapshots=lambda *args: replace(provider(*args), feedback={})
+    )
+    neutral_response = empty_client.post("/api/ai/predict", json=payload, headers=PPIC)
+    assert neutral_response.status_code == 201
+    neutral = neutral_response.json()
+    assert neutral["items"][0]["prev_error_adj"] == 0
+    saved = empty_runs.get(neutral["forecast_run_id"])
+    assert saved.feedback_audit["ING-001"].source == "UNAVAILABLE"
+    assert saved.feedback_reasons == {"ING-001": "FEEDBACK_NOT_AVAILABLE"}
+
+    operational_client, operational_runs = client_factory(
+        snapshots=lambda *args: replace(provider(*args), source="operational")
+    )
+    mixed = operational_client.post("/api/ai/predict", json=payload, headers=PPIC)
+    assert mixed.status_code == 422
+    assert mixed.json()["error"]["code"] == "INVALID_FORECAST_INPUT"
+    assert len(operational_runs) == 0
+
+
 def test_missing_corrupt_or_incompatible_model(tmp_path, client_factory):
     import json
     import shutil
