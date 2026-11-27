@@ -223,6 +223,8 @@ def adjustment(record: FeedbackRecord | None, cutoff: datetime, scale: float) ->
         return 0.0, 0, "FEEDBACK_NOT_AVAILABLE"
     if record.reason != "VALID":
         return 0.0, 0, record.reason
+    if record.raw_residual is None or not isfinite(record.raw_residual):
+        raise ValueError("valid feedback must have a finite residual")
     bound = INVENTORY_PARAMETERS["clip_fraction"] * scale
     return max(-bound, min(bound, record.raw_residual)), 1, "VALID"
 

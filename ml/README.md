@@ -52,3 +52,26 @@ Perintah training mencetak direktori run. Gunakan direktori tersebut pada `--art
 | `charts/` | Enam grafik evaluasi dalam SVG dan PNG. |
 
 XGBoost dipilih dari empat konfigurasi menggunakan MAE ternormalisasi validation. Model terpilih di-fit ulang pada baris train dan validation dengan label yang sudah tersedia saat origin test pertama. Perintah `evaluate` memuat artefak dalam proses Python baru dan memverifikasi ulang skor serta prediksi test melalui model tersimpan. Keluaran model dan evaluasi berada di `ml/artifacts/` yang dikecualikan dari Git. Seluruh skor berasal dari data sintetis.
+
+## Inferensi Sprint 4
+
+Jalankan harness setelah bundle Sprint 2 dan model Sprint 3 tersedia. Lockfile memiliki dependensi API dan tes. Untuk instalasi dengan resolusi versi sendiri, gunakan extra `[api,train,test]`.
+
+```powershell
+rtk proxy ml\.venv\Scripts\python.exe -m pip install -r ml/requirements-dev.lock
+rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q
+$env:SIKEMBANG_REPLAY_TOKEN = [System.Net.NetworkCredential]::new('', (Read-Host 'Token bearer harness lokal' -AsSecureString)).Password
+rtk proxy ml\.venv\Scripts\python.exe -m uvicorn ai_forecast.harness:create_app --factory --host 127.0.0.1 --port 8010
+```
+
+Jalankan klien di terminal kedua dengan token lokal yang sama. Default cutoff harness adalah 5 Maret 2025 pukul 12.00 WIB, sehingga minggu yang dapat diminta adalah `2025-W10` dan `2025-W11`.
+
+```powershell
+$replayToken = [System.Net.NetworkCredential]::new('', (Read-Host 'Token bearer harness lokal' -AsSecureString)).Password
+$request = @{target_period='2025-W10'; ingredient_ids=@('ING-001','ING-007','ING-012')} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8010/api/ai/predict' -Headers @{Authorization="Bearer $replayToken"} -ContentType 'application/json' -Body $request
+```
+
+`SIKEMBANG_ARTIFACT` dan `SIKEMBANG_REPLAY_DATASET` dapat menunjuk artefak serta bundle yang cocok. Untuk mereproduksi 422 riwayat kurang, mulai ulang harness dengan `SIKEMBANG_REPLAY_CUTOFF=2020-12-21T12:00:00+07:00` dan minta `2020-W52`. Harness ini memakai order dan feedback sintetis, bearer token lokal, dan penyimpanan run dalam memori satu proses.
+
+Backend bersama dapat memanggil `create_router(service, identity_role)`. Dependensi `identity_role` harus memperoleh peran dari principal yang sudah terautentikasi. Isi `ForecastService` dengan satu `Predictor.load(...)` per proses, implementasi `SnapshotProvider` dan `RunRepository` backend. ProcurementCalcService bisa memanggil `service.forecast(planning_period, ingredient_ids, cutoff=cutoff, snapshot=snapshot)` secara langsung. Gunakan snapshot order/BOM dan cutoff yang sama dengan kalkulasi. Komponen AI yang dikonsumsi adalah `run.items[].predicted_demand`.
