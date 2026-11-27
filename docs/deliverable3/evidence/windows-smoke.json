@@ -1,0 +1,86 @@
+{
+  "live": {
+    "command": "python -X utf8 -m uvicorn sikembang_backend.app:create_app --factory --host 127.0.0.1 --port 49804 --no-access-log",
+    "health": {
+      "status": "ok",
+      "database": "ok",
+      "model_version": "xgb-v1-f9a770b940f71fc8"
+    },
+    "docs_http": 200,
+    "prediction_http": 201,
+    "prediction": {
+      "forecast_run_id": "FC-2026-W48-75fcf5052d094eceb47f3d7b19f71b20",
+      "target_period": "2026-W48",
+      "model_version": "xgb-v1-f9a770b940f71fc8",
+      "season_flags": {
+        "is_ramadan_season": false,
+        "is_wedding_season": true,
+        "is_year_end": false
+      },
+      "items": [
+        {
+          "ingredient_id": "ING-001",
+          "predicted_demand": 4.498,
+          "base_unit": "kg",
+          "prev_error_adj": 0.0
+        }
+      ]
+    },
+    "telemetry_source": "simulated",
+    "telemetry_http": 201,
+    "stored_kg": 17.5
+  },
+  "harness": {
+    "command": "python -X utf8 -m uvicorn ai_forecast.harness:create_app --factory --host 127.0.0.1 --port 49810 --no-access-log",
+    "source": "synthetic",
+    "prediction_http": 201,
+    "prediction": {
+      "forecast_run_id": "FC-2025-W10-34781da7e29941a0986721d63f81069d",
+      "target_period": "2025-W10",
+      "model_version": "xgb-v1-f9a770b940f71fc8",
+      "season_flags": {
+        "is_ramadan_season": true,
+        "is_wedding_season": false,
+        "is_year_end": false
+      },
+      "items": [
+        {
+          "ingredient_id": "ING-001",
+          "predicted_demand": 14.638,
+          "base_unit": "kg",
+          "prev_error_adj": 9.792000000000023
+        },
+        {
+          "ingredient_id": "ING-007",
+          "predicted_demand": 90.0,
+          "base_unit": "butir",
+          "prev_error_adj": 125.0
+        },
+        {
+          "ingredient_id": "ING-012",
+          "predicted_demand": 1.102,
+          "base_unit": "liter",
+          "prev_error_adj": 1.3530000000000006
+        }
+      ]
+    }
+  },
+  "seed": {
+    "period": "2026-W48",
+    "cutoff_at": "2026-11-27T17:15:33.683064+07:00",
+    "source": "synthetic",
+    "inserted": {
+      "ingredients": 5,
+      "menus": 5,
+      "bom_recipes": 14,
+      "users": 3,
+      "devices": 2,
+      "orders": 2,
+      "order_revisions": 2,
+      "order_items": 4,
+      "weekly_demand": 20,
+      "feedback_evidence": 0
+    }
+  },
+  "database_reused": false
+}

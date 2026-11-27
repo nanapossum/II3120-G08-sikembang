@@ -1,6 +1,6 @@
-# SIkembang (frontend)
+# SiKembang
 
-Antarmuka web untuk **SIkembang**, sistem rekomendasi kebutuhan bahan: Marketing mencatat pesanan,
+Antarmuka web untuk **SiKembang**, sistem rekomendasi kebutuhan bahan. Marketing mencatat pesanan,
 sistem memecahnya lewat resep, AI menambah prediksi dari riwayat dan tren musiman, stok gudang
 dikurangkan, PPIC meninjau (boleh menerima, mengubah, atau menolak rekomendasi AI), lalu PFA menerima
 dokumen permintaan bahan.
@@ -8,7 +8,13 @@ dokumen permintaan bahan.
 Repo ini memuat frontend React serta backend FastAPI dan SQLite di direktori `ml/`. Keduanya
 berkomunikasi melalui REST API sesuai Laporan Kelompok 08 Deliverable 2 II3120, Bab 9.
 
-## Tech stack
+Paket handoff Deliverable 3 memuat setup Windows, arsitektur, kontrak API, model XGBoost,
+panduan ESP32, skrip demo, materi laporan dan PPT, serta bukti pengujian. Demo software
+terverifikasi dengan telemetry simulasi. Kompilasi ESP32 lulus. Pengukuran fisik menunggu
+upload dan kalibrasi. [Paket handoff D3](docs/deliverable3/README.md) ·
+[Mulai di Windows](docs/deliverable3/windows.md) · [Bukti pengujian](docs/deliverable3/EVIDENCE_INDEX.md)
+
+## Teknologi frontend
 
 | Kebutuhan            | Pilihan                                                       | Alasan singkat                                                            |
 | -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -47,25 +53,8 @@ VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000
 
 ### Menjalankan mode live di Windows
 
-Dari root repo, siapkan venv, model Sprint 3, dan berkas environment lokal sesuai
-[panduan backend](ml/README.md#backend-dan-sqlite-sprint-6a). Jalankan backend di terminal pertama.
-
-```powershell
-. .\ml\runtime\backend.env.ps1
-rtk proxy ml\.venv\Scripts\python.exe -m sikembang_backend.manage init-db
-rtk proxy ml\.venv\Scripts\python.exe -m sikembang_backend.manage seed
-rtk proxy ml\.venv\Scripts\python.exe -m uvicorn sikembang_backend.app:create_app --factory --host 127.0.0.1 --port 8000
-```
-
-Jalankan frontend dari terminal kedua.
-
-```powershell
-rtk proxy npm.cmd ci
-$env:VITE_API_MODE = 'live'
-$env:VITE_API_BASE_URL = '/api'
-$env:VITE_DEV_PROXY_TARGET = 'http://127.0.0.1:8000'
-rtk proxy npm.cmd run dev -- --host 127.0.0.1 --port 5173
-```
+Ikuti panduan Windows untuk membuat venv, memuat artefak model, menginisialisasi dan mengisi
+SQLite, serta menjalankan FastAPI dan frontend di dua terminal. [Langkah eksekusi lengkap](docs/deliverable3/windows.md)
 
 Buka `http://127.0.0.1:5173`. Masuk menggunakan akun seed `marketing`, `ppic`, atau `pfa`
 dan password masing-masing dari konfigurasi backend. Sesi browser memakai JWT dan membaca peran
@@ -180,4 +169,4 @@ Prinsipnya: **satu folder fitur per peran/layar** di `features/`, **satu pintu k
 - Layar revisi pesanan (`PUT /api/orders/{id}` dengan penanganan 409 `VERSION_CONFLICT`). Service sudah ada di `ordersApi.update`.
 - Daftar menu: `MENU_OPTIONS` di `features/orders/OrderFormPage.tsx` masih statis. Perlu endpoint menu atau `GET /api/menus`.
 - Konfirmasi "Terima permintaan" di sisi PFA belum ada endpoint-nya.
-- Tampilan indikator musim (Ramadan, pernikahan, akhir tahun) dari `season_flags` AI belum ditampilkan karena `POST /api/ai/predict` hanya dipanggil backend.
+- Tampilan indikator musim belum tersedia. Flag musim dapat dilihat pada respons `POST /api/ai/predict` oleh PPIC/SYSTEM.

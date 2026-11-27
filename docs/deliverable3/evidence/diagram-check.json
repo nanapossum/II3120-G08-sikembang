@@ -1,0 +1,132 @@
+[
+  {
+    "file": "01-system.svg",
+    "view_box": [
+      0,
+      0,
+      1329.68701171875,
+      539.73583984375
+    ],
+    "text_groups": 15,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "02-backend.svg",
+    "view_box": [
+      0,
+      0,
+      691.521484375,
+      902.73583984375
+    ],
+    "text_groups": 10,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "03-training.svg",
+    "view_box": [
+      0,
+      0,
+      509.8125,
+      947.5
+    ],
+    "text_groups": 10,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "04-inference.svg",
+    "view_box": [
+      0,
+      0,
+      1137.59521484375,
+      876.5
+    ],
+    "text_groups": 13,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "05-feedback.svg",
+    "view_box": [
+      0,
+      0,
+      836.22509765625,
+      664
+    ],
+    "text_groups": 15,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "06-sequence.svg",
+    "view_box": [
+      -50,
+      -10,
+      1674,
+      1572
+    ],
+    "text_groups": 64,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "07-lifecycle.svg",
+    "view_box": [
+      0,
+      0,
+      593.0050048828125,
+      784.5
+    ],
+    "text_groups": 9,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "08-iot.svg",
+    "view_box": [
+      0,
+      0,
+      1034.1566162109375,
+      737.2423095703125
+    ],
+    "text_groups": 18,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "09-erd.svg",
+    "view_box": [
+      5.75,
+      0,
+      1662.25732421875,
+      1986.625
+    ],
+    "text_groups": 142,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  },
+  {
+    "file": "10-user-flow.svg",
+    "view_box": [
+      0,
+      0,
+      641.84228515625,
+      875.625
+    ],
+    "text_groups": 15,
+    "foreign_objects": 0,
+    "clipped": [],
+    "overlaps": []
+  }
+]

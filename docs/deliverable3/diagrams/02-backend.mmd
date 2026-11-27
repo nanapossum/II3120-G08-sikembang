@@ -1,0 +1,24 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f8f5ee"
+    primaryTextColor: "#203321"
+    primaryBorderColor: "#568052"
+    lineColor: "#526454"
+    clusterBkg: "#f7faf6"
+    clusterBorder: "#9bb196"
+---
+flowchart TB
+  api["Router FastAPI · skema Pydantic"] --> auth["Identitas JWT · DEVICE · SYSTEM"]
+  auth --> domain["OrderService · InventoryIoTService<br/>ProcurementCalcService · DraftService · ShoppingListService"]
+  auth --> forecast["ForecastService"]
+  domain -->|"inferensi internal"| forecast
+  forecast --> predict["Predictor · XGBoost"]
+  forecast --> adapter["DatabaseSnapshots · DatabaseRuns"]
+  adapter --> feedback["Feedback mingguan yang direkonsiliasi"]
+  auth --> session
+  domain --> session
+  adapter --> session
+  feedback --> session
+  session["Sesi SQLAlchemy · model ORM<br/>select dan transaksi"] --> sqlite[("SQLite")]

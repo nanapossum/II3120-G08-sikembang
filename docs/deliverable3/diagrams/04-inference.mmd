@@ -1,0 +1,19 @@
+flowchart TD
+    request["POST /api/ai/predict atau panggilan pengadaan"] --> scope["Periksa minggu ISO, cutoff WIB dan ID bahan"]
+    scope --> snapshot["Baca snapshot yang konsisten pada cutoff"]
+    snapshot --> bom["BOM pesanan confirmed"]
+    snapshot --> lags["Empat minggu lag lengkap"]
+    snapshot --> correction["prev_error_adj dari histori yang eligible"]
+    scope --> calendar["Flag musim dan posisi cutoff"]
+    bom --> validate["Validasi satuan, versi dan urutan 18 fitur"]
+    lags --> validate
+    correction --> validate
+    calendar --> validate
+    lags -->|"Minggu hilang atau belum tuntas"| insufficient["422 INSUFFICIENT_HISTORY"]
+    validate --> boost["Inferensi XGBoost, invers skala dan pembulatan"]
+    boost --> persist["Simpan forecast run dan hasil per bahan"]
+    persist --> output["Prediksi tambahan, satuan, model version dan run ID"]
+    classDef source fill:#eef7f5,stroke:#11645c,color:#172721
+    classDef result fill:#f7ebdf,stroke:#965319,color:#40230f
+    class request,snapshot source
+    class insufficient,output result

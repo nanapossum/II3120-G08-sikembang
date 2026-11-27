@@ -1,0 +1,20 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f8f5ee"
+    primaryTextColor: "#203321"
+    primaryBorderColor: "#568052"
+    lineColor: "#526454"
+---
+flowchart TB
+  Login["Masuk · /login"] --> Marketing["Marketing · catat pesanan"]
+  Login --> Plan["PPIC · /ppic"]
+  Login --> PFA["PFA · /pfa/requests"]
+  Marketing -->|"pesanan terkonfirmasi"| Plan
+  IoT["ESP32 atau simulator"] -->|"stok dan waktu sinkron"| Plan
+  Plan -->|"hitung minggu berjalan"| Review["PPIC · /ppic/review/:period<br/>tinjau draf"]
+  Review -->|"kuantitas final dan catatan"| Approve{"Ada kuantitas positif?"}
+  Approve -->|"ya · PPIC kirim"| PFA
+  Approve -->|"seluruhnya nol"| Done["Tervalidasi tanpa pengadaan"]
+  PFA --> List["Lihat item terkirim dan kuantitas final"]

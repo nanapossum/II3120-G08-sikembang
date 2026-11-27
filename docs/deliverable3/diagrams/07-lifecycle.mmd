@@ -1,0 +1,29 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f4f8f2"
+    primaryTextColor: "#203321"
+    primaryBorderColor: "#568052"
+    lineColor: "#526454"
+    noteBkgColor: "#f8f5ee"
+    noteBorderColor: "#b19762"
+---
+stateDiagram-v2
+  direction TB
+  [*] --> DRAFT: Kalkulasi PPIC atau pembuatan SYSTEM
+  DRAFT --> VALIDATED_BY_PPIC: Approve dengan semua keputusan item
+  VALIDATED_BY_PPIC --> SENT_TO_PFA: Send jika ada kuantitas positif
+  note left of DRAFT
+    Send sebelum approval ditolak.
+  end note
+  note left of VALIDATED_BY_PPIC
+    Seluruh kuantitas final nol berarti
+    pengadaan tidak diperlukan.
+    Daftar tetap tervalidasi.
+    Send ditolak.
+    Approval ulang ditolak.
+  end note
+  note right of SENT_TO_PFA
+    Approve dan send ulang ditolak.
+  end note

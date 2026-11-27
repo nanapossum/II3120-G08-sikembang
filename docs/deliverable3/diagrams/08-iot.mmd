@@ -1,0 +1,23 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f8f5ee"
+    primaryTextColor: "#203321"
+    primaryBorderColor: "#568052"
+    lineColor: "#526454"
+    clusterBkg: "#f7faf6"
+    clusterBorder: "#9bb196"
+---
+flowchart TB
+  subgraph hardware["Perangkat timbangan"]
+    direction TB
+    Load["Load cell"] -->|"sinyal jembatan"| HX["HX711"]
+    HX -->|"DOUT GPIO32 · SCK GPIO33"| ESP["ESP32 Dev Module"]
+    Button["Tombol tare"] -->|"GPIO27 · aktif LOW"| ESP
+    ESP -->|"I²C GPIO25 / GPIO26"| OLED["SSD1306 128 × 64 · 0x3C"]
+  end
+  ESP -->|"sampel stabil · berat dalam g"| wifi["Wi-Fi LAN · waktu UTC dari SNTP"]
+  wifi -->|"POST JSON · X-Device-Key"| api["/api/iot/telemetry"]
+  demo["Simulator · sumber synthetic"] -.->|"jalur alternatif"| api
+  api -->|"audit dan konversi g → kg"| db[("SQLite · log dan stok bahan")]

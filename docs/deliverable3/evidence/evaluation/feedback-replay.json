@@ -1,0 +1,200 @@
+{
+  "source": "SIMULATED",
+  "cutoff_at": "2025-03-05T12:00:00+07:00",
+  "request": {
+    "target_period": "2025-W10",
+    "ingredient_ids": [
+      "ING-001"
+    ]
+  },
+  "history": {
+    "week_start": "2025-02-24",
+    "ingredient_id": "ING-001",
+    "base_unit": "kg",
+    "reference": {
+      "run_id": "SIM-RUN-9ab5f5a5321e7fc360114469",
+      "source": "baseline_replay",
+      "published_at": "2025-02-24T00:00:00+07:00",
+      "confirmed_bom": 221.64,
+      "predicted_demand": 26.445
+    },
+    "opening_stock": 27.0,
+    "closing_stock": 49.0,
+    "ledger": {
+      "transfer_in": 3,
+      "transfer_out": 0,
+      "return_out": 0,
+      "waste": 1,
+      "correction": -1,
+      "receipt": 278.877,
+      "production": 257.877
+    },
+    "production_use": 257.877,
+    "additional_proxy": 36.23700000000002,
+    "raw_residual": 9.792000000000023,
+    "approval_at": "2025-03-03T06:00:00+07:00",
+    "scale": 250.85625,
+    "bound": 62.7140625,
+    "prev_error_adj": 9.792000000000023,
+    "at_approval_before_eligible": [
+      0.0,
+      0,
+      "FEEDBACK_NOT_AVAILABLE"
+    ],
+    "normalized_model_input": 0.039034307496823475
+  },
+  "with_feedback": {
+    "status": 201,
+    "response": {
+      "forecast_run_id": "FC-2025-W10-9c6e1af5faa647008a48939a4530e51f",
+      "target_period": "2025-W10",
+      "model_version": "xgb-v1-f9a770b940f71fc8",
+      "season_flags": {
+        "is_ramadan_season": true,
+        "is_wedding_season": false,
+        "is_year_end": false
+      },
+      "items": [
+        {
+          "ingredient_id": "ING-001",
+          "predicted_demand": 14.638,
+          "base_unit": "kg",
+          "prev_error_adj": 9.792000000000023
+        }
+      ]
+    },
+    "recorded_feedback_sources": {
+      "ING-001": "SIMULATED"
+    },
+    "recorded_feedback_reasons": {
+      "ING-001": "VALID"
+    }
+  },
+  "without_feedback": {
+    "status": 201,
+    "response": {
+      "forecast_run_id": "FC-2025-W10-ea70073d8cdd492d81810f5bd684f0df",
+      "target_period": "2025-W10",
+      "model_version": "xgb-v1-f9a770b940f71fc8",
+      "season_flags": {
+        "is_ramadan_season": true,
+        "is_wedding_season": false,
+        "is_year_end": false
+      },
+      "items": [
+        {
+          "ingredient_id": "ING-001",
+          "predicted_demand": 14.638,
+          "base_unit": "kg",
+          "prev_error_adj": 0.0
+        }
+      ]
+    },
+    "recorded_feedback_sources": {
+      "ING-001": "UNAVAILABLE"
+    },
+    "recorded_feedback_reasons": {
+      "ING-001": "FEEDBACK_NOT_AVAILABLE"
+    }
+  },
+  "clipped_example": {
+    "source": "SIMULATED",
+    "cutoff_at": "2025-03-18T12:00:00+07:00",
+    "request": {
+      "target_period": "2025-W12",
+      "ingredient_ids": [
+        "ING-001"
+      ]
+    },
+    "history": {
+      "week_start": "2025-03-10",
+      "ingredient_id": "ING-001",
+      "base_unit": "kg",
+      "reference": {
+        "run_id": "SIM-RUN-ce49c1b6c7513cf608f21446",
+        "source": "baseline_replay",
+        "published_at": "2025-03-10T00:00:00+07:00",
+        "confirmed_bom": 426.81,
+        "predicted_demand": 22.305
+      },
+      "opening_stock": 49.0,
+      "closing_stock": 20.0,
+      "ledger": {
+        "transfer_in": 1,
+        "transfer_out": 0,
+        "return_out": 0,
+        "waste": 3,
+        "correction": 2,
+        "receipt": 508.928,
+        "production": 537.928
+      },
+      "production_use": 537.928,
+      "additional_proxy": 111.118,
+      "raw_residual": 88.81299999999999,
+      "approval_at": "2025-03-17T10:00:00+07:00",
+      "scale": 350.2575,
+      "bound": 87.564375,
+      "prev_error_adj": 87.564375,
+      "at_approval_before_eligible": [
+        0.0,
+        0,
+        "FEEDBACK_NOT_AVAILABLE"
+      ],
+      "normalized_model_input": 0.25
+    },
+    "with_feedback": {
+      "status": 201,
+      "response": {
+        "forecast_run_id": "FC-2025-W12-b68e511babb04d8d86acc66741c42e55",
+        "target_period": "2025-W12",
+        "model_version": "xgb-v1-f9a770b940f71fc8",
+        "season_flags": {
+          "is_ramadan_season": true,
+          "is_wedding_season": false,
+          "is_year_end": false
+        },
+        "items": [
+          {
+            "ingredient_id": "ING-001",
+            "predicted_demand": 22.923,
+            "base_unit": "kg",
+            "prev_error_adj": 87.564375
+          }
+        ]
+      },
+      "recorded_feedback_sources": {
+        "ING-001": "SIMULATED"
+      },
+      "recorded_feedback_reasons": {
+        "ING-001": "VALID"
+      }
+    },
+    "without_feedback": {
+      "status": 201,
+      "response": {
+        "forecast_run_id": "FC-2025-W12-e68d754a587f4a53a6c02156a17e7348",
+        "target_period": "2025-W12",
+        "model_version": "xgb-v1-f9a770b940f71fc8",
+        "season_flags": {
+          "is_ramadan_season": true,
+          "is_wedding_season": false,
+          "is_year_end": false
+        },
+        "items": [
+          {
+            "ingredient_id": "ING-001",
+            "predicted_demand": 23.043,
+            "base_unit": "kg",
+            "prev_error_adj": 0.0
+          }
+        ]
+      },
+      "recorded_feedback_sources": {
+        "ING-001": "UNAVAILABLE"
+      },
+      "recorded_feedback_reasons": {
+        "ING-001": "FEEDBACK_NOT_AVAILABLE"
+      }
+    }
+  }
+}

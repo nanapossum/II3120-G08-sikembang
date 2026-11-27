@@ -1,0 +1,30 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f8f5ee"
+    primaryTextColor: "#203321"
+    primaryBorderColor: "#568052"
+    lineColor: "#526454"
+    clusterBkg: "#f7faf6"
+    clusterBorder: "#9bb196"
+---
+flowchart TB
+  roles["Marketing · PPIC · PFA"] --> web["React · dashboard berbasis peran"]
+  web -->|"REST · Bearer JWT"| api
+  esp["ESP32 · HX711 · load cell"] -->|"Wi-Fi · REST · kunci perangkat"| api
+  sim["Simulator IoT"] -->|"REST · kunci perangkat"| api
+
+  subgraph app[" "]
+    direction TB
+    api["FastAPI · router dan otorisasi"]
+    order["OrderService"]
+    inventory["InventoryIoTService"]
+    forecast["AIForecastService"]
+    calc["ProcurementCalcService"]
+    shop["ShoppingListService"]
+    api --> order & inventory & forecast & calc & shop
+  end
+
+  order & inventory & forecast & calc & shop --> sqlite[("SQLite")]
+  forecast --> model["Artefak XGBoost"]
