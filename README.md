@@ -1,159 +1,144 @@
 # SiKembang
 
-Antarmuka web untuk **SiKembang**, sistem rekomendasi kebutuhan bahan. Marketing mencatat pesanan,
-sistem memecahnya lewat resep, AI menambah prediksi dari riwayat dan tren musiman, stok gudang
-dikurangkan, PPIC meninjau (boleh menerima, mengubah, atau menolak rekomendasi AI), lalu PFA menerima
-dokumen permintaan bahan.
+**SiKembang** adalah sistem perencanaan kebutuhan bahan baku dan pemantauan stok gudang berbasis **IoT (ESP32 + Load Cell 20kg)** dan **AI Forecasting (XGBoost)** untuk operasional katering (Kelompok 08 — II3120).
 
-Repo ini memuat frontend React serta backend FastAPI dan SQLite di direktori `ml/`. Keduanya
-berkomunikasi melalui REST API sesuai Laporan Kelompok 08 Deliverable 2 II3120, Bab 9.
+Alur end-to-end: **Marketing** mencatat pesanan terkonfirmasi → sistem memecah resep (BOM), **AI XGBoost** memprediksi kebutuhan tambahan musiman & volume order, **timbangan IoT ESP32** memperbarui stok gudang secara real-time → **PPIC** meninjau rekomendasi (Terima / Ubah / Tolak AI) → **PFA** menerima dokumen permintaan bahan siap pengadaan.
 
-Paket handoff Deliverable 3 memuat setup Windows, arsitektur, kontrak API, model XGBoost,
-panduan ESP32, skrip demo, materi laporan dan PPT, serta bukti pengujian. Demo software
-terverifikasi dengan telemetry simulasi. Kompilasi ESP32 lulus. Pengukuran fisik menunggu
-upload dan kalibrasi. [Paket handoff D3](docs/deliverable3/README.md) ·
-[Mulai di Windows](docs/deliverable3/windows.md) · [Bukti pengujian](docs/deliverable3/EVIDENCE_INDEX.md)
+> **Dokumentasi lengkap:** [Paket Handoff Deliverable 3](docs/deliverable3/README.md) · [Panduan Hardware ESP32](firmware/README.md) · [Arsitektur Frontend](docs/architecture.md) · [Bukti Pengujian](docs/deliverable3/EVIDENCE_INDEX.md)
 
-## Teknologi frontend
+---
 
-| Kebutuhan            | Pilihan                                                       | Alasan singkat                                                            |
-| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Build dan dev server | Vite + React 19 + TypeScript (strict)                         | Cepat, hasil build statis, bisa di-host di mana saja                      |
-| Routing              | React Router                                                  | Rute per peran (Marketing, PPIC, PFA)                                     |
-| Data dari API        | TanStack Query                                                | Cache, loading, error, dan invalidasi tanpa state global manual           |
-| Validasi data        | Zod                                                           | Skema kontrak API dan skema form satu bahasa, response divalidasi runtime |
-| Form                 | React Hook Form + Zod resolver                                | Form pesanan dengan baris menu dinamis                                    |
-| Styling              | Tailwind CSS v4 + design tokens (CSS variables)               | Token warna, font, radius terpusat di `tokens.css`                        |
-| Font                 | Figtree (judul) + Open Sans (isi), self-hosted via Fontsource | Tanpa dependensi CDN                                                      |
-| Backend palsu        | MSW (Mock Service Worker)                                     | Frontend jalan penuh tanpa backend                                        |
-| Tes                  | Vitest                                                        | Logika keputusan PPIC dan util murni                                      |
-| Kualitas             | ESLint, Prettier, GitHub Actions CI                           | Lint, tes, dan build di setiap push                                       |
+## Coba Cepat untuk Dosen / Penguji
 
-Frontend sengaja **agnostik terhadap stack backend**: semua pengetahuan tentang bentuk API terkumpul di
-`src/api/`. Backend boleh FastAPI, Express, Spring, Laravel, dan lain-lain, selama kontraknya sama.
-Cara menyesuaikan: lihat [docs/architecture.md](docs/architecture.md).
+Tersedia **dua cara** mencoba aplikasi langsung setelah `git clone`:
 
-## Mulai cepat
+### Opsi A — Paling Cepat (30 detik, Tanpa Python / Mode Mock)
+
+Cocok untuk langsung mengeksplorasi seluruh antarmuka **Marketing → PPIC → PFA** beserta **Simulator IoT** di browser tanpa instalasi backend Python:
 
 ```bash
 npm install
-cp .env.example .env      # default: VITE_API_MODE=mock
-npm run dev               # http://localhost:5173
+npm run dev
 ```
 
-Pada mode `mock`, pemilih peran di header (MARKETING, PPIC, PFA) tersedia, dan data awal mengikuti contoh
-payload di laporan. Untuk memakai backend sungguhan:
+Buka **`http://localhost:5173`**. Gunakan pemilih peran (`MARKETING`, `PPIC`, `PFA`) di kanan atas navbar serta menu **Simulator IoT** untuk mencoba seluruh alur.
 
+---
+
+### Opsi B — Mode Live Full-Stack dalam 1 Perintah (FastAPI + XGBoost + SQLite + React)
+
+Artefak model XGBoost siap pakai (`ml/artifacts/default/`) sudah disertakan di repositori sehingga **tidak perlu menjalankan training ulang**. Jalankan satu perintah berikut dari root repo:
+
+- **Windows (PowerShell):**
+  ```powershell
+  .\scripts\start-demo.ps1
+  ```
+  *(Gunakan `.\scripts\start-demo.ps1 -ResetDb` jika ingin mengulang demo dengan database bersih.)*
+
+- **macOS / Linux / Git Bash:**
+  ```bash
+  bash scripts/start-demo.sh
+  ```
+  *(Gunakan `bash scripts/start-demo.sh --reset-db` untuk mereset database demo.)*
+
+Script otomatis menyiapkan `ml/.venv`, menginstal dependensi, menginisialisasi & mengisi SQLite minggu berjalan, mendaftarkan sensor ESP32, lalu menyalakan:
+
+- **Frontend Dashboard:** `http://localhost:5173`
+- **Swagger / OpenAPI Docs:** `http://127.0.0.1:8000/docs`
+- **Health Check (cek versi model XGBoost):** `http://127.0.0.1:8000/api/health`
+
+#### Akun Demo Mode Live
+
+| Peran | Username | Password | Fungsi Utama |
+|---|---|---|---|
+| **Marketing** | `marketing` | `demo-marketing-123` | Catat pesanan terkonfirmasi (gunakan tanggal acara minggu ini agar langsung masuk ke PPIC) |
+| **PPIC** | `ppic` | `demo-ppic-123456` | Pantau stok IoT real-time, hitung kebutuhan (AI XGBoost), tinjau draf, setujui & kirim ke PFA |
+| **PFA** | `pfa` | `demo-pfa-1234567` | Terima dan cetak/simpan PDF dokumen permintaan bahan yang sudah disetujui PPIC |
+
+#### Uji Live Update Sensor IoT Tanpa Perangkat Fisik (Opsional)
+
+Saat membuka halaman **PPIC** (`/ppic`), jalankan perintah berikut di terminal lain untuk mensimulasikan timbangan ESP32 mengirim berat Beras **`170,4 g`** (otomatis dikonversi menjadi **`0,17 kg`** dengan status **Segar** dalam 2,5 detik):
+
+**PowerShell (Windows):**
+```powershell
+$ts = [DateTimeOffset]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")
+curl.exe -i -X POST "http://127.0.0.1:8000/api/iot/telemetry" `
+  -H "Content-Type: application/json" `
+  -H "X-Device-Key: demo-esp32-physical-rice-key-0000001" `
+  -d "{`"sensor_id`":`"SNS-GDG-ESP32-01`",`"ingredient_id`":`"ING-001`",`"measured_weight`":170.4,`"unit`":`"g`",`"recorded_at`":`"$ts`"}"
+```
+
+**Bash (macOS / Linux):**
 ```bash
-# .env
-VITE_API_MODE=live
-VITE_API_BASE_URL=/api
-VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000
+TS=$(date -u +"%Y-%m-%dT%H:%M:%S.000000Z")
+curl -i -X POST "http://127.0.0.1:8000/api/iot/telemetry" \
+  -H "Content-Type: application/json" \
+  -H "X-Device-Key: demo-esp32-physical-rice-key-0000001" \
+  -d "{\"sensor_id\":\"SNS-GDG-ESP32-01\",\"ingredient_id\":\"ING-001\",\"measured_weight\":170.4,\"unit\":\"g\",\"recorded_at\":\"${TS}\"}"
 ```
 
-### Menjalankan mode live di Windows
+> Untuk pengujian menggunakan **perangkat keras ESP32 + Load Cell 20kg + OLED SSD1306 fisik**, lihat panduan lengkap pinout, kalibrasi, `secrets.h`, dan upload Arduino di [firmware/README.md](firmware/README.md).
 
-Ikuti panduan Windows untuk membuat venv, memuat artefak model, menginisialisasi dan mengisi
-SQLite, serta menjalankan FastAPI dan frontend di dua terminal. [Langkah eksekusi lengkap](docs/deliverable3/windows.md)
+---
 
-Buka `http://127.0.0.1:5173`. Masuk menggunakan akun seed `marketing`, `ppic`, atau `pfa`
-dan password masing-masing dari konfigurasi backend. Sesi browser memakai JWT dan membaca peran
-melalui `/api/auth/me`. Token tersimpan per tab. Gunakan **Keluar** untuk mengganti akun.
+## Teknologi Utama
 
-Untuk menjalankan mock, mulai ulang Vite dengan `$env:VITE_API_MODE = 'mock'` dan kosongkan
-`VITE_DEV_PROXY_TARGET`. Mock menjalankan MSW dan menampilkan pemilih peran serta simulator.
-Untuk mengirim telemetry simulasi ke backend live, gunakan klien dan kunci sensor terdaftar
-sesuai [panduan fallback perangkat](firmware/esp32_scale/README.md#walkthrough-fisik-dan-fallback).
-Pada build live, host frontend perlu menyediakan route `/api` atau konfigurasi base URL yang sesuai.
+| Lapisan | Teknologi | Peran |
+|---|---|---|
+| **Frontend** | React 19 + TypeScript (strict) + Vite 8 + Tailwind CSS v4 | Dashboard responsif dengan tipografi Inter / Plus Jakarta Sans (`tabular-nums`) |
+| **State & Validasi** | TanStack Query + React Hook Form + Zod + MSW | Polling stok real-time (2,5 dtk), kontrak API runtime, dan mode mock standalone |
+| **Backend API** | FastAPI + SQLAlchemy + SQLite + PyJWT | REST API 5 layanan (Orders, Inventory IoT, AI Forecast, Procurement, Shopping Lists) |
+| **AI Forecasting** | XGBoost (`model.ubj`) + fitur musiman & feedback IoT | Prediksi kebutuhan tambahan mingguan (Ramadan, musim nikahan, akhir tahun, tren 4 minggu) |
+| **IoT Hardware** | ESP32 DevKit + HX711 (Load Cell 20kg) + OLED SSD1306 | Pembacaan berat stabil real-time, auto-zero, SNTP UTC, HTTP POST dengan `X-Device-Key` |
 
-| Skrip                             | Fungsi                                   |
-| --------------------------------- | ---------------------------------------- |
-| `npm run dev`                     | Dev server                               |
-| `npm run build`                   | Typecheck lalu build produksi ke `dist/` |
-| `npm run lint` / `npm run format` | ESLint / Prettier                        |
-| `npm test`                        | Vitest                                   |
+---
 
-## Struktur folder
+## Skrip Pengembangan & Pengujian
+
+| Perintah | Fungsi |
+|---|---|
+| `npm run dev` | Menjalankan dev server frontend (`http://localhost:5173`) |
+| `npm run build` | Typecheck (`tsc --noEmit`) + build produksi ke `dist/` |
+| `npm run lint` / `npm run format` | ESLint / Prettier |
+| `npm test` | Menjalankan seluruh unit test frontend (Vitest) |
+| `ml\.venv\Scripts\python.exe -m pytest ml/tests -q` | Menjalankan seluruh unit & integration test backend + AI *(pasang `[test]` jika perlu)* |
+
+---
+
+## Struktur Repositori
 
 ```text
-sikembang/
-├── .github/  # CI GitHub Actions
-│   └── workflows/
-│       └── ci.yml
-├── docs/  # dokumentasi teknis
-│   └── architecture.md  # arsitektur dan cara ganti backend
-├── public/  # aset statis (+ service worker MSW)
-│   ├── favicon.svg
-│   └── mockServiceWorker.js
-├── src/  # kode aplikasi
-│   ├── api/  # satu-satunya pintu ke backend
-│   │   ├── contracts/  # skema Zod bentuk data backend
-│   │   │   └── index.ts
-│   │   ├── mocks/  # MSW: backend palsu untuk mode mock
-│   │   │   ├── browser.ts
-│   │   │   ├── db.ts  # data awal mock
-│   │   │   └── handlers.ts  # handler MSW
-│   │   ├── services/  # satu fungsi per endpoint
-│   │   │   └── index.ts
-│   │   ├── case.test.ts
-│   │   ├── case.ts  # konversi snake_case <-> camelCase
-│   │   ├── config.ts  # baca env
-│   │   ├── errors.ts  # ApiError dan pesan ramah
-│   │   ├── http.ts  # klien HTTP, token, galat
-│   │   └── queries.ts  # hook React Query + kunci cache
-│   ├── app/  # provider, router, sesi
-│   │   ├── providers.tsx
-│   │   ├── router.tsx
-│   │   └── session.tsx  # sesi JWT live dan peran demo mock
-│   ├── components/  # komponen bersama
-│   │   ├── layout/  # AppShell dan navigasi per peran
-│   │   │   └── AppShell.tsx
-│   │   └── ui/  # primitif UI (Button, Tag, Field, Modal, dst.)
-│   │       └── index.tsx
-│   ├── features/  # satu folder per peran/layar
-│   │   ├── orders/  # Marketing: catat pesanan
-│   │   │   └── OrderFormPage.tsx
-│   │   ├── planning/  # PPIC: perencanaan dan hitung kebutuhan
-│   │   │   └── PlanningPage.tsx
-│   │   ├── requests/  # PFA: dokumen permintaan bahan
-│   │   │   └── RequestsPage.tsx
-│   │   ├── review/  # PPIC: tinjau, ubah, tolak AI, setujui
-│   │   │   ├── decisions.test.ts
-│   │   │   ├── decisions.ts  # logika keputusan PPIC (murni, dites)
-│   │   │   └── ReviewPage.tsx
-│   │   └── simulator/  # demo timbangan IoT
-│   │       └── SimulatorPage.tsx
-│   ├── lib/  # util murni (format, periode, cn)
-│   │   ├── cn.ts
-│   │   ├── format.ts
-│   │   └── period.ts
-│   ├── styles/  # Tailwind + design tokens
-│   │   ├── index.css
-│   │   └── tokens.css  # warna, font, radius
-│   ├── test/  # (disiapkan untuk setup tes bersama)
-│   └── main.tsx
-├── .env.example  # contoh variabel lingkungan
-├── .gitignore
-├── .prettierrc  # format kode
-├── eslint.config.js  # lint
-├── index.html  # titik masuk HTML
-├── package.json  # dependensi dan skrip
-├── README.md  # dokumen ini
-├── tsconfig.json  # TypeScript strict
-└── vite.config.ts  # Vite, alias @, proxy dev, Vitest
+II3120-G08-sikembang/
+├── src/                        # Frontend React 19 + TypeScript
+│   ├── api/                    # Kontrak Zod, HTTP client, TanStack Query, MSW mock
+│   ├── app/                    # Providers, router, manajemen sesi JWT & mock
+│   ├── components/             # AppShell (navbar) dan primitif UI modern
+│   ├── features/               # Fitur per peran: auth, orders, planning, review, requests, simulator
+│   ├── lib/                    # Formatter angka/presisi stok & util periode ISO
+│   └── styles/                 # Tailwind CSS v4 & design tokens
+├── ml/                         # Backend FastAPI, SQLite, dan Modul AI XGBoost
+│   ├── artifacts/default/      # Artefak model XGBoost siap pakai (model.ubj + manifest.json)
+│   ├── config/                 # Katalog BOM, kalender musiman, konfigurasi sintetis
+│   ├── src/ai_forecast/        # Pipeline fitur, training, evaluasi, dan predictor XGBoost
+│   ├── src/sikembang_backend/  # FastAPI app, auth JWT/Device-Key, IoT, procurement, shopping lists
+│   └── tests/                  # Suite pengujian backend & AI
+├── firmware/                   # Firmware perangkat keras IoT ESP32
+│   ├── README.md               # Panduan lengkap wiring, upload Arduino, dan uji curl
+│   ├── esp32_sikembang/        # Firmware utama (HX711 + OLED SSD1306 + NTP + secrets.example.h)
+│   └── esp32_scale/            # Referensi firmware FreeRTOS & host unit test C++
+├── scripts/                    # Script 1-perintah untuk menjalankan demo live (Windows & Unix)
+└── docs/                       # Arsitektur, spesifikasi data, dan paket handoff Deliverable 3
 ```
 
-Prinsipnya: **satu folder fitur per peran/layar** di `features/`, **satu pintu ke backend** di `api/`,
-**satu sumber desain** di `styles/tokens.css`. Komponen tidak memanggil `fetch` langsung.
+---
 
-## Layar
+## Daftar Layar Aplikasi
 
-| Rute                    | Peran     | Isi                                                                        |
-| ----------------------- | --------- | -------------------------------------------------------------------------- |
-| `/login`                | Live      | Autentikasi akun dashboard                                                |
-| `/marketing/orders/new` | Marketing | Catat pesanan terkonfirmasi                                                |
-| `/ppic`                 | PPIC      | Ringkasan minggu ini, stok, tombol hitung kebutuhan                        |
-| `/ppic/review/:period`  | PPIC      | Tinjau draf: Terima, Ubah, atau Tolak AI per bahan, lalu setujui dan kirim |
-| `/pfa/requests`         | PFA       | Dokumen permintaan bahan yang sudah dikirim                                |
-| `/demo/simulator`       | Mock      | Simulator timbangan IoT untuk demo                                         |
-
+| Rute | Peran | Fungsi |
+|---|---|---|
+| `/login` | Live | Autentikasi JWT akun dashboard (`marketing`, `ppic`, `pfa`) |
+| `/marketing/orders/new` | Marketing | Catat pesanan terkonfirmasi beserta detail menu dan porsi |
+| `/ppic` | PPIC | Ringkasan pesanan minggu ini, stok gudang live IoT, dan tombol hitung kebutuhan |
+| `/ppic/review/:period` | PPIC | Tinjau rekomendasi belanja (rincian AI, Terima / Ubah / Tolak AI), setujui & kirim ke PFA |
+| `/pfa/requests` | PFA | Dokumen permintaan bahan yang telah disetujui PPIC (siap cetak / simpan PDF) |
+| `/demo/simulator` | Mock | Simulator timbangan IoT untuk demonstrasi tanpa backend |

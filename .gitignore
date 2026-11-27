@@ -12,9 +12,14 @@ pytest-cache-files-*/
 *.egg-info/
 ml/build/
 ml/generated/
-ml/artifacts/
+ml/artifacts/*
+!ml/artifacts/default/
+ml/artifacts/default/*
+!ml/artifacts/default/model.ubj
+!ml/artifacts/default/manifest.json
 ml/runtime/
 firmware/esp32_scale/secrets.h
+firmware/esp32_sikembang/secrets.h
 .ai-context/
 .github/workflows/copilot-instructions.md
 docs/wireframe-spec.md

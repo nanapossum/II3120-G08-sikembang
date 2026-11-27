@@ -5,7 +5,7 @@ Panduan untuk PowerShell dari root repository. Lingkungan audit memakai Python 3
 ## 1. Checkout dan environment
 
 ```powershell
-git clone --branch feat/ai-forecast --single-branch https://github.com/nanapossum/II3120-G08-sikembang.git
+git clone --branch main --single-branch https://github.com/nanapossum/II3120-G08-sikembang.git
 Set-Location II3120-G08-sikembang
 git branch --show-current
 git log -1 --oneline
@@ -14,7 +14,7 @@ node --version
 npm.cmd --version
 ```
 
-Clone dan checkout branch remote diverifikasi di direktori terpisah. Pada audit handoff, remote masih di `e869edf`. Baseline yang dipakai dokumen ini adalah `ac5b405`, commit hardening Sprint 7 yang tersedia di checkout pemilik. Jika log clone masih menunjukkan `e869edf`, minta pemilik menyediakan snapshot yang memuat `ac5b405` dan paket Sprint 8 melalui jalur tim. Contoh API versi terbaru mengikuti snapshot tersebut.
+> **Cara paling cepat (1 perintah):** Jalankan `.\scripts\start-demo.ps1` dari root repositori untuk menyiapkan venv, artefak default (`ml/artifacts/default`), SQLite, FastAPI (`:8000`), dan Frontend (`:5173`) secara otomatis. Langkah manual di bawah ini tetap disediakan untuk kontrol penuh atau audit terpisah.
 
 ```powershell
 py -3.13 -m venv ml/.venv

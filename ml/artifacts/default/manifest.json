@@ -1,0 +1,380 @@
+{
+  "source": "synthetic",
+  "artifact_format": "XGBoost UBJSON",
+  "architecture": "pooled XGBRegressor",
+  "objective": "reg:squarederror",
+  "seed": 3120,
+  "device": "cpu",
+  "tree_method": "hist",
+  "n_jobs": 1,
+  "dataset": {
+    "version": "synthetic-weekly-v1",
+    "seed": 3120,
+    "manifest_sha256": "89e60ca164930f934e7061b8bd3df3d3121009ef0c283d952c9902e1a29306ce",
+    "split_sha256": {
+      "train.csv": "18d4a6474cce432c21150ff571ee3b6d631bb59af6cfcacdb476052974e55564",
+      "validation.csv": "0bf27a18c759d5112f3a2b9fc98961355667ce1df5a77ff8ab2a9b5d9de7af00",
+      "test.csv": "1dd5649bd023f2a4543ef8861b9a6376d51335d42f04f3a93c585371bae44de8",
+      "purged.csv": "c58d2a83f5f101d595d9323b822539c1a854a6a70d8552c9a3ea3df019fb53a6"
+    },
+    "splits": {
+      "train": {
+        "examples": 10570,
+        "target_weeks": 151,
+        "first_target": "2021-W05",
+        "last_target": "2023-W51",
+        "first_origin": "2021-01-25T00:00:00+07:00",
+        "last_origin": "2023-12-24T00:46:00+07:00",
+        "latest_label_available_at": "2023-12-25T00:00:00+07:00"
+      },
+      "validation": {
+        "examples": 3570,
+        "target_weeks": 51,
+        "first_target": "2024-W01",
+        "last_target": "2024-W51",
+        "first_origin": "2023-12-25T00:00:00+07:00",
+        "last_origin": "2024-12-22T15:54:00+07:00",
+        "latest_label_available_at": "2024-12-23T00:00:00+07:00"
+      },
+      "test": {
+        "examples": 3640,
+        "target_weeks": 52,
+        "first_target": "2025-W01",
+        "last_target": "2025-W52",
+        "first_origin": "2024-12-23T00:00:00+07:00",
+        "last_origin": "2025-12-28T23:01:00+07:00",
+        "latest_label_available_at": "2025-12-29T00:00:00+07:00"
+      },
+      "purged": {
+        "examples": 140,
+        "target_weeks": 2,
+        "first_target": "2023-W52",
+        "last_target": "2024-W52",
+        "first_origin": "2023-12-18T00:00:00+07:00",
+        "last_origin": "2024-12-29T07:53:00+07:00",
+        "latest_label_available_at": "2024-12-30T00:00:00+07:00"
+      }
+    },
+    "fit_examples": 14140,
+    "fit_first_target": "2021-W05",
+    "fit_last_target": "2024-W51",
+    "fit_first_origin": "2021-01-25T00:00:00+07:00",
+    "fit_last_origin": "2024-12-22T15:54:00+07:00",
+    "fit_latest_label_available_at": "2024-12-23T00:00:00+07:00",
+    "fixture_sha256": {
+      "calendar-id-synth-v1.json": "cd9e45132244094b5434ce6cd80a7e0e42f35f74556abfddeb08e20205ea8745",
+      "catalog-and-bom-v1.json": "114fb0528c1187d872114e40a30a7aa394440724df4e2a137f191a3d2c41c568",
+      "synthetic-v1.json": "bc4549a4553097c55fd70bc92b13f7f99df46d1c6cccd28c3ac664ecefbb2463"
+    }
+  },
+  "model_features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_4",
+    "is_ramadan_season",
+    "is_wedding_season",
+    "is_year_end",
+    "prev_error_adj",
+    "feedback_available",
+    "confirmed_bom",
+    "days_remaining",
+    "days_to_start",
+    "cutoff_day_fraction",
+    "ingredient_ING-001",
+    "ingredient_ING-003",
+    "ingredient_ING-007",
+    "ingredient_ING-009",
+    "ingredient_ING-012"
+  ],
+  "feature_dictionary": {
+    "lag_1": "Fulfilled BOM minggu cutoff dikurangi 1, dibagi scale.",
+    "lag_2": "Fulfilled BOM minggu cutoff dikurangi 2, dibagi scale.",
+    "lag_3": "Fulfilled BOM minggu cutoff dikurangi 3, dibagi scale.",
+    "lag_4": "Fulfilled BOM minggu cutoff dikurangi 4, dibagi scale.",
+    "is_ramadan_season": "0/1; minimal empat tanggal minggu target menurut kalender berversi.",
+    "is_wedding_season": "0/1; minimal empat tanggal minggu target menurut kalender berversi.",
+    "is_year_end": "0/1; minimal empat tanggal minggu target menurut kalender berversi.",
+    "prev_error_adj": "Residual minggu tutup yang tersedia secara ketat sebelum cutoff, dibatasi ±0,25 scale lalu dibagi scale.",
+    "feedback_available": "1 untuk rekonsiliasi valid, termasuk koreksi nol. 0 untuk fallback netral.",
+    "confirmed_bom": "BOM terkonfirmasi untuk sisa window pada cutoff, dibagi scale.",
+    "days_remaining": "Hari kalender layanan tersisa dalam target, inklusif hari cutoff.",
+    "days_to_start": "Jarak hari ke Senin target, minimum nol.",
+    "cutoff_day_fraction": "Fraksi hari cutoff pada Asia/Jakarta.",
+    "ingredient_ING-001": "One-hot untuk ING-001.",
+    "ingredient_ING-003": "One-hot untuk ING-003.",
+    "ingredient_ING-007": "One-hot untuk ING-007.",
+    "ingredient_ING-009": "One-hot untuk ING-009.",
+    "ingredient_ING-012": "One-hot untuk ING-012."
+  },
+  "target": {
+    "native": "target_native = max(0, fulfilled_remaining - confirmed_bom_native)",
+    "model_target": "target_scaled = target_native / scale",
+    "scale": "max(1 canonical unit, mean(lag_1_native .. lag_4_native))",
+    "use": "Only columns in model_features are inputs. Never use fulfilled_remaining or either target as X."
+  },
+  "ingredient_units": {
+    "ING-001": "kg",
+    "ING-003": "kg",
+    "ING-007": "butir",
+    "ING-009": "liter",
+    "ING-012": "liter"
+  },
+  "catalog_version": "synthetic-bom-v1",
+  "calendar_version": "calendar-id-synth-v1",
+  "horizon": "remaining current ISO week or complete following ISO week",
+  "cutoff": {
+    "timezone": "Asia/Jakarta",
+    "week_start": "Monday 00:00",
+    "day_of_cutoff": "include unless already served",
+    "lags": "four closed consecutive weeks before cutoff week; every lag available by cutoff"
+  },
+  "prev_error_adj": {
+    "policy": {
+      "version": "synthetic-inventory-feedback-v1",
+      "baseline_weeks": 4,
+      "settlement": "Retrospective receipt and attributed production totals post when the complete week's fulfillment is available.",
+      "clip_fraction": 0.25,
+      "initial_stock": 100.0,
+      "usage_multiplier_range": [
+        0.95,
+        1.05
+      ],
+      "reserve_range": [
+        20,
+        60
+      ],
+      "missing_sensor_probability": 0.05,
+      "rejected_sensor_probability": 0.05,
+      "approval_hours_after_close": [
+        2,
+        30
+      ],
+      "transfer_in_out_return_waste_range": [
+        0,
+        4
+      ],
+      "signed_correction_range": [
+        -2,
+        2
+      ],
+      "max_packet_delay_minutes": 5,
+      "boundary_window_minutes": 60
+    },
+    "feedback_source": "synthetic baseline replay for primary model evaluation",
+    "neutral": "zero with feedback_available=0 when ineligible or unavailable",
+    "cutoff": "strictly before cutoff",
+    "applied": "once as model input"
+  },
+  "postprocessing": "max(0, scaled prediction) times row scale, half-up to 0.001 kg/liter or 1 butir",
+  "hyperparameters": {
+    "max_depth": 2,
+    "n_estimators": 100,
+    "learning_rate": 0.05,
+    "subsample": 1.0,
+    "colsample_bytree": 1.0,
+    "min_child_weight": 1,
+    "reg_alpha": 0.0,
+    "reg_lambda": 1.0
+  },
+  "versions": {
+    "python": "3.13.2",
+    "numpy": "2.2.6",
+    "xgboost": "3.1.3",
+    "scikit-learn": "1.6.1",
+    "scipy": "1.15.3",
+    "tzdata": "2025.2",
+    "matplotlib": "3.10.3"
+  },
+  "metrics": {
+    "normalized_mae_test": {
+      "xgboost": 0.07309302064848591,
+      "historical_median": 0.07474056787205512,
+      "zero": 0.14507456911588465,
+      "xgboost_model_feedback_replay": 0.07309712422114442
+    },
+    "per_ingredient_test": {
+      "ING-001": {
+        "unit": "kg",
+        "xgboost": {
+          "n": 728,
+          "mae": 19.803357142857145,
+          "rmse": 29.19874520679097,
+          "bias": 4.986637362637363,
+          "under_count": 234,
+          "over_count": 494
+        },
+        "historical_median": {
+          "n": 728,
+          "mae": 20.321614010989013,
+          "rmse": 32.289104806237454,
+          "bias": -2.588578296703297,
+          "under_count": 293,
+          "over_count": 325
+        },
+        "zero": {
+          "n": 728,
+          "mae": 42.90719093406594,
+          "rmse": 63.98525017002008,
+          "bias": -42.90719093406594,
+          "under_count": 552,
+          "over_count": 0
+        },
+        "xgboost_model_feedback_replay": {
+          "n": 728,
+          "mae": 19.804918956043956,
+          "rmse": 29.20137691161738,
+          "bias": 4.979364010989011,
+          "under_count": 235,
+          "over_count": 493
+        }
+      },
+      "ING-003": {
+        "unit": "kg",
+        "xgboost": {
+          "n": 728,
+          "mae": 17.942682692307695,
+          "rmse": 26.63995305197184,
+          "bias": 3.7455425824175825,
+          "under_count": 230,
+          "over_count": 498
+        },
+        "historical_median": {
+          "n": 728,
+          "mae": 19.134395604395603,
+          "rmse": 30.02163981893032,
+          "bias": -2.4003021978021977,
+          "under_count": 313,
+          "over_count": 306
+        },
+        "zero": {
+          "n": 728,
+          "mae": 40.74175824175824,
+          "rmse": 60.6529279254849,
+          "bias": -40.74175824175824,
+          "under_count": 552,
+          "over_count": 0
+        },
+        "xgboost_model_feedback_replay": {
+          "n": 728,
+          "mae": 17.93950686813187,
+          "rmse": 26.635803616060688,
+          "bias": 3.7654821428571426,
+          "under_count": 230,
+          "over_count": 498
+        }
+      },
+      "ING-007": {
+        "unit": "butir",
+        "xgboost": {
+          "n": 728,
+          "mae": 172.01373626373626,
+          "rmse": 256.0750448041132,
+          "bias": 7.837912087912088,
+          "under_count": 265,
+          "over_count": 463
+        },
+        "historical_median": {
+          "n": 728,
+          "mae": 178.3543956043956,
+          "rmse": 278.1824496166595,
+          "bias": -22.23076923076923,
+          "under_count": 291,
+          "over_count": 325
+        },
+        "zero": {
+          "n": 728,
+          "mae": 378.3736263736264,
+          "rmse": 550.9360266805081,
+          "bias": -378.3736263736264,
+          "under_count": 553,
+          "over_count": 0
+        },
+        "xgboost_model_feedback_replay": {
+          "n": 728,
+          "mae": 172.01098901098902,
+          "rmse": 256.078719224305,
+          "bias": 7.884615384615385,
+          "under_count": 265,
+          "over_count": 463
+        }
+      },
+      "ING-009": {
+        "unit": "liter",
+        "xgboost": {
+          "n": 728,
+          "mae": 1.7863695054945057,
+          "rmse": 2.7167261120431596,
+          "bias": 0.6713777472527472,
+          "under_count": 148,
+          "over_count": 449
+        },
+        "historical_median": {
+          "n": 728,
+          "mae": 1.691098901098901,
+          "rmse": 2.9731545666048174,
+          "bias": -0.3512774725274725,
+          "under_count": 248,
+          "over_count": 236
+        },
+        "zero": {
+          "n": 728,
+          "mae": 1.9307005494505494,
+          "rmse": 3.789911474364076,
+          "bias": -1.9307005494505494,
+          "under_count": 360,
+          "over_count": 0
+        },
+        "xgboost_model_feedback_replay": {
+          "n": 728,
+          "mae": 1.787513736263736,
+          "rmse": 2.7178389711454436,
+          "bias": 0.6729862637362638,
+          "under_count": 148,
+          "over_count": 450
+        }
+      },
+      "ING-012": {
+        "unit": "liter",
+        "xgboost": {
+          "n": 728,
+          "mae": 1.4160137362637362,
+          "rmse": 2.067727160408285,
+          "bias": 0.44323351648351644,
+          "under_count": 216,
+          "over_count": 512
+        },
+        "historical_median": {
+          "n": 728,
+          "mae": 1.4499065934065933,
+          "rmse": 2.2871140694078895,
+          "bias": -0.1746126373626374,
+          "under_count": 301,
+          "over_count": 319
+        },
+        "zero": {
+          "n": 728,
+          "mae": 3.018556318681319,
+          "rmse": 4.519272062390258,
+          "bias": -3.018556318681319,
+          "under_count": 553,
+          "over_count": 0
+        },
+        "xgboost_model_feedback_replay": {
+          "n": 728,
+          "mae": 1.4160151098901097,
+          "rmse": 2.067790107807138,
+          "bias": 0.44298763736263735,
+          "under_count": 216,
+          "over_count": 512
+        }
+      }
+    },
+    "validation": {
+      "full": 0.08087161573207832,
+      "without_feedback": 0.08073963819881036
+    }
+  },
+  "artifact_sha256": "f9a770b940f71fc80329298ee3aec21cb692b48c0b1e5fa35891fe950b06c11e",
+  "model_version": "xgb-v1-f9a770b940f71fc8"
+}
