@@ -74,7 +74,7 @@ Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8010/api/ai/predict' -Head
 
 `SIKEMBANG_ARTIFACT` dan `SIKEMBANG_REPLAY_DATASET` dapat menunjuk artefak serta bundle yang cocok. Untuk mereproduksi 422 riwayat kurang, mulai ulang harness dengan `SIKEMBANG_REPLAY_CUTOFF=2020-12-21T12:00:00+07:00` dan minta `2020-W52`. Harness ini memakai order dan feedback sintetis, bearer token lokal, dan penyimpanan run dalam memori satu proses.
 
-Backend bersama dapat memanggil `create_router(service, identity_role)`. Dependensi `identity_role` harus memperoleh peran dari principal yang sudah terautentikasi. Isi `ForecastService` dengan satu `Predictor.load(...)` per proses, implementasi `SnapshotProvider` dan `RunRepository` backend. ProcurementCalcService bisa memanggil `service.forecast(planning_period, ingredient_ids, cutoff=cutoff, snapshot=snapshot)` secara langsung. Gunakan snapshot order/BOM dan cutoff yang sama dengan kalkulasi. Komponen AI yang dikonsumsi adalah `run.items[].predicted_demand`.
+Backend memasang `create_router(service, identity_role)` dan memuat `Predictor` satu kali per proses. ProcurementCalcService memanggil `ForecastService.build_run(...)` dengan provider snapshot yang terikat ke transaksi kalkulasi, lalu menyimpan run bersama draf. Komponen AI untuk rumus pengadaan adalah `run.items[].predicted_demand`.
 
 ## Feedback AI–IoT Sprint 5
 
@@ -117,9 +117,9 @@ rtk proxy ml\.venv\Scripts\python.exe -m uvicorn sikembang_backend.app:create_ap
 
 Server menyediakan `GET /api/health`, `/docs`, `POST /api/auth/login`, `GET /api/auth/me`, dan router D2 `POST /api/ai/predict`. Login menerima JSON `username` dan `password`, lalu menyediakan `access_token` untuk header Authorization Bearer. MARKETING, PPIC, dan PFA adalah peran dashboard. SYSTEM dipakai untuk pemanggilan internal.
 
-Default seed mengikuti minggu berjalan WIB. Untuk replay yang dibekukan, isi `SIKEMBANG_DEMO_CUTOFF` dengan timestamp WIB yang sesuai, misalnya `2025-03-05T12:00:00+07:00`, dan jalankan `seed --period 2025-W10`. Gunakan path SQLite tersendiri untuk replay bila ingin mempertahankan demo berjalan. Seeder memasukkan baris yang belum ada dan memeriksa konflik kredensial serta kelayakan histori pada seed ulang. Perubahan kredensial yang sudah tersimpan memerlukan alur administrasi terpisah.
+Default seed mengikuti minggu berjalan WIB. Untuk replay yang dibekukan, isi `SIKEMBANG_DEMO_CUTOFF` dengan timestamp WIB yang sesuai, misalnya `2025-03-05T12:00:00+07:00`, dan jalankan `seed --period 2025-W10`. Variabel ini membekukan seed dan endpoint prediksi. Endpoint kalkulasi menggunakan clock layanan, sehingga replay kalkulasi memakai clock terkontrol dari runner pengujian. Gunakan path SQLite tersendiri untuk replay bila ingin mempertahankan demo berjalan. Seeder memasukkan baris yang belum ada dan memeriksa konflik kredensial serta kelayakan histori pada seed ulang. Perubahan kredensial yang sudah tersimpan memerlukan alur administrasi terpisah.
 
-Artefak dan bundle Sprint 2–3 dapat dibangkitkan melalui perintah di bagian sebelumnya bila belum tersedia. Beri `SIKEMBANG_ARTIFACT` path direktori artefak untuk mengaktifkan inferensi. Dengan konfigurasi model kosong, health dan login tetap dapat dipakai dan endpoint AI memberi `500 MODEL_UNAVAILABLE`. Konfigurasi path model yang invalid menghentikan startup. Init database adalah langkah eksplisit.
+Artefak dan bundle Sprint 2–3 dapat dibangkitkan melalui perintah di bagian sebelumnya bila belum tersedia. Beri `SIKEMBANG_ARTIFACT` path direktori artefak untuk mengaktifkan inferensi. Sejak Sprint 6C, konfigurasi model yang kosong atau artefak yang gagal dimuat membuat permintaan AI mengembalikan `500 MODEL_UNAVAILABLE`. Health, login, dan kalkulasi eksplisit tanpa AI tetap tersedia. Init database adalah langkah eksplisit.
 
 Vite dapat meneruskan `/api` melalui `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000`. Klien frontend live sudah membaca `sessionStorage.access_token`, sedangkan layar login dan workflow bisnis menyusul pada sprint berikutnya. Uji backend 6A melalui OpenAPI atau HTTP client. Skema dan provenance dirinci di [dokumentasi data backend](../docs/backend-data.md).
 
@@ -134,3 +134,11 @@ Untuk database Sprint 6A yang sudah ada, jalankan kembali `rtk proxy ml\.venv\Sc
 Dengan aplikasi dan database dari langkah 6A, akun Marketing dapat membuat order melalui `POST /api/orders` dan mengirim revisi lengkap melalui `PUT /api/orders/{order_id}` dengan versi yang terakhir dibaca. Akun PPIC dapat membaca order melalui `GET /api/orders?planning_period=2026-W48` dan stok melalui `GET /api/inventory/stock?ingredient_ids=ING-001,ING-012`. Gunakan minggu ISO sesuai tanggal acara.
 
 `POST /api/iot/telemetry` memerlukan `X-Device-Key` dan pasangan sensor–bahan yang terdaftar. Untuk beras, registry demo memakai `SNS-GDG-01` dan `ING-001`. Kirim timestamp berzona yang berusia maksimal 300 detik. Stok tanpa waktu sinkronisasi atau dengan sinkronisasi lebih dari 60 menit berstatus `STALE`. Nilai `null` berarti kuantitas stok belum diketahui.
+
+## Forecast dan draf pengadaan Sprint 6C
+
+Untuk database 6B yang sudah ada, jalankan kembali `init-db` pada path yang sama. Inisialisasi menambahkan lokasi nullable untuk registrasi perangkat dan log telemetry agar bukti historis dapat dicocokkan dengan binding lokasi pada saat penerimaan.
+
+Dengan JWT PPIC pada Swagger atau klien HTTP, kirim `POST /api/procurement/calculate` dengan `planning_period` dari output seed dan `include_forecast` bernilai `true` atau `false`. Bawaan adalah `true`. Setiap periode dapat memiliki satu daftar D2. Gunakan database demo terpisah untuk membandingkan dua mode pada periode yang sama.
+
+`POST /api/shopping-lists` menerima otorisasi layanan SYSTEM. Jalur normal memanggil service draf di proses FastAPI yang sama. Untuk demonstrasi endpoint SYSTEM melalui HTTP, tetapkan `SIKEMBANG_SYSTEM_KEY` dengan rahasia tersendiri dari environment lokal dan kirim sebagai `X-System-Key`. Header tersebut juga berlaku pada baca order, baca stok, dan prediksi yang diizinkan untuk SYSTEM. Templat environment menyertakan konfigurasi opsional itu. [Arsitektur pengadaan dan feedback](../docs/backend-data.md#procurement-dan-feedback-sprint-6c)

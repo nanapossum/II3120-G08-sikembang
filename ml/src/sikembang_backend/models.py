@@ -96,6 +96,7 @@ class Device(Base):
     key_hash: Mapped[str] = mapped_column(unique=True)
     active: Mapped[bool] = mapped_column(default=True)
     source: Mapped[str] = mapped_column(default="operational")
+    location_id: Mapped[str | None]
 
 
 class Order(Base):
@@ -187,6 +188,7 @@ class IoTTelemetryLog(Base):
     stored_value: Mapped[float | None]
     base_unit: Mapped[str | None]
     device_source: Mapped[str | None]
+    location_id: Mapped[str | None]
 
 
 class IoTTelemetryRequestRejection(Base):

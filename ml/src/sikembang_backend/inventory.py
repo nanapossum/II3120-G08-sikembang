@@ -1,6 +1,7 @@
 """Receive telemetry and read current or historical stock evidence."""
 
 from collections.abc import Callable, Iterable
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -173,6 +174,7 @@ class InventoryIoTService:
                 log.stored_value = stored_value
                 log.base_unit = base_unit
                 log.device_source = principal.source
+                log.location_id = principal.location_id
             else:
                 log.validation_status = "REJECTED"
                 log.rejection_code = error.code
@@ -185,18 +187,26 @@ class InventoryIoTService:
                                 base_unit=base_unit, current_stock=stored_value,
                                 last_iot_sync=body.recorded_at.astimezone(WIB))
 
-    def stock(self, ingredient_ids: Iterable[str] = ()) -> StockSnapshot:
+    def stock(
+        self, ingredient_ids: Iterable[str] = (), *, as_of: datetime | None = None, session: Session | None = None,
+    ) -> StockSnapshot:
+        """Read current stock and evaluate freshness at the supplied time or the service clock."""
         requested_ids = set(ingredient_ids)
         query = select(Ingredient).order_by(Ingredient.ingredient_id)
         if requested_ids:
             query = query.where(Ingredient.ingredient_id.in_(requested_ids))
 
-        with self._sessions() as session:
-            ingredients = session.scalars(query).all()
+        with (self._sessions() if session is None else nullcontext(session)) as db:
+            ingredients = db.scalars(query).all()
             unknown = requested_ids.difference(row.ingredient_id for row in ingredients)
             if unknown:
                 raise AppError(404, "UNKNOWN_INGREDIENT", "Bahan tidak ditemukan.", {"ingredient_ids": sorted(unknown)})
-            as_of = self._now()
+            if as_of is None:
+                as_of = self._now()
+            elif as_of.utcoffset() is None:
+                raise ValueError("Stock as_of must be a timezone-aware timestamp.")
+            else:
+                as_of = as_of.astimezone(WIB)
             items = []
             for row in ingredients:
                 sync = row.last_iot_sync
@@ -231,7 +241,8 @@ class InventoryIoTService:
             return [TelemetryReading(*row) for row in session.execute(query)]
 
 
-def create_inventory_router(service: InventoryIoTService, auth: Auth) -> APIRouter:
+def create_inventory_router(service: InventoryIoTService, auth: Auth, *,
+                            read_access: Callable[..., str] | None = None) -> APIRouter:
     router = APIRouter(prefix="/api", responses={"default": {"model": ErrorEnvelope}})
 
     class TelemetryRoute(APIRoute):
@@ -263,7 +274,7 @@ def create_inventory_router(service: InventoryIoTService, auth: Auth) -> APIRout
                          responses={status: {"model": ErrorEnvelope} for status in (400, 401, 409, 422)},
                          route_class_override=TelemetryRoute)
 
-    @router.get("/inventory/stock", tags=["inventory"], dependencies=[Depends(auth.require("PPIC"))],
+    @router.get("/inventory/stock", tags=["inventory"], dependencies=[Depends(read_access or auth.require("PPIC"))],
                 responses={status: {"model": ErrorEnvelope} for status in (401, 403, 404)})
     def read_stock(ingredient_ids: str = "") -> StockSnapshot:
         return service.stock(part for value in ingredient_ids.split(",") if (part := value.strip()))

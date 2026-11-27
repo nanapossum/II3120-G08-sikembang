@@ -1,4 +1,4 @@
-"""Dashboard JWT authentication and provisioned device credentials."""
+"""Dashboard, device and internal service authorization."""
 
 import hashlib
 import re
@@ -33,6 +33,7 @@ _DUMMY_PASSWORD_HASH = f"{_PASSWORD_HASH_PREFIX}{'00' * 16}${'00' * 32}"
 
 Bearer = Annotated[HTTPAuthorizationCredentials | None, Security(HTTPBearer(auto_error=False))]
 DeviceKey = Annotated[str | None, Security(APIKeyHeader(name="X-Device-Key", auto_error=False))]
+SystemKey = Annotated[str | None, Security(APIKeyHeader(name="X-System-Key", scheme_name="SystemKey", auto_error=False))]
 
 
 class LoginRequest(BaseModel):
@@ -57,6 +58,34 @@ class DevicePrincipal:
     sensor_id: str
     ingredient_id: str
     source: str
+    location_id: str | None = None
+
+
+class SystemPrincipal:
+    """An opaque capability issued by one application instance."""
+
+    __slots__ = ()
+
+
+class SystemAuthority:
+    def __init__(self, key: SecretStr | None):
+        self._principal = SystemPrincipal()
+        self._key_digest = hashlib.sha256(key.get_secret_value().encode("ascii")).digest() if key else None
+
+    @property
+    def principal(self) -> SystemPrincipal:
+        return self._principal
+
+    def require(self, principal: SystemPrincipal) -> None:
+        if principal is not self._principal:
+            raise _forbidden_role()
+
+    def http_principal(self, key: SystemKey) -> SystemPrincipal:
+        if self._key_digest is None or key is None:
+            raise _forbidden_role()
+        if not compare_digest(hashlib.sha256(key.encode("utf-8")).digest(), self._key_digest):
+            raise _forbidden_role()
+        return self._principal
 
 
 def _password_digest(password: str, salt: bytes) -> bytes:
@@ -188,4 +217,5 @@ class Auth:
             device = session.scalar(select(Device).where(Device.key_hash == digest, Device.active.is_(True)))
             if device is None:
                 raise _invalid_device()
-            return DevicePrincipal(sensor_id=device.sensor_id, ingredient_id=device.ingredient_id, source=device.source)
+            return DevicePrincipal(sensor_id=device.sensor_id, ingredient_id=device.ingredient_id,
+                                   source=device.source, location_id=device.location_id)

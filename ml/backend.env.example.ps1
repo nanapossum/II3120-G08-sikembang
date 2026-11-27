@@ -2,6 +2,7 @@
 $env:SIKEMBANG_DB_PATH = 'ml/runtime/sikembang.sqlite3'
 $env:SIKEMBANG_ARTIFACT = 'ml/artifacts/xgb-v1-f9a770b940f71fc8'
 $env:SIKEMBANG_JWT_SECRET = ''                  # At least 32 random bytes.
+# $env:SIKEMBANG_SYSTEM_KEY = ''                # Optional. Generate a separate random key of at least 32 visible ASCII characters.
 $env:SIKEMBANG_MARKETING_PASSWORD = ''
 $env:SIKEMBANG_PPIC_PASSWORD = ''
 $env:SIKEMBANG_PFA_PASSWORD = ''

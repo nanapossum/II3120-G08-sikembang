@@ -9,15 +9,15 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ai_forecast.features import LAGS, WEEK, WeeklyDemand
-from ai_forecast.feedback_provider import ApprovedFeedbackWeek, HistoricalFeedbackProvider, parse_feedback_sources
 from ai_forecast.fixtures import WIB, Catalog, load_fixtures, week_start
 from ai_forecast.orders import DemandIndex, Item, Version
 from ai_forecast.predictor import ConfirmedDemand, ForecastError, ForecastRun, ForecastSnapshot, HistoryEntry
 
 from .models import (
-    BomRecipe, FeedbackEvidenceRecord, ForecastRunItem, ForecastRunRecord, Ingredient,
+    BomRecipe, ForecastRunItem, ForecastRunRecord, Ingredient,
     Order, OrderItem, OrderRevision, WeeklyDemandRecord,
 )
+from .forecast_feedback import read_approved_feedback
 from .orders import latest_order_revisions
 
 
@@ -68,77 +68,56 @@ def _order_versions(session: Session, target: date, cutoff: datetime) -> tuple[l
     ], selected_sources
 
 
-def _read_simulated_feedback(session: Session, week: date, cutoff: datetime, units: dict[str, str]):
-    rows = session.scalars(
-        select(FeedbackEvidenceRecord)
-        .where(FeedbackEvidenceRecord.week_start == week,
-               FeedbackEvidenceRecord.ingredient_id.in_(units),
-               FeedbackEvidenceRecord.approved_at < cutoff)
-        .order_by(FeedbackEvidenceRecord.approved_at.desc())
-    )
-    latest = {}
-    for row in rows:
-        latest.setdefault((row.week_start, row.ingredient_id), row)
-    evidence = {}
-    for key, row in latest.items():
-        if row.source != "synthetic" or row.payload.get("source") != "SIMULATED":
-            continue
-        sources = parse_feedback_sources(row.payload)
-        if sources.approved_at != row.approved_at:
-            continue
-        references = (sources.reference_run,) if sources.reference_run is not None else ()
-        evidence[key] = ApprovedFeedbackWeek(
-            sources, references, ledger_complete=sources.movements is not None, production_complete=True,
-        )
-    return HistoricalFeedbackProvider(lambda week, ingredient, _: evidence.get((week, ingredient))).load(cutoff, units)
-
-
 class DatabaseSnapshots:
     def __init__(self, sessions: sessionmaker[Session], *, catalog: Catalog | None = None):
         self._sessions = sessions
         self._model_catalog = catalog if catalog is not None else load_fixtures()[0]
 
     def __call__(self, target: date, cutoff: datetime, ingredient_ids: tuple[str, ...]) -> ForecastSnapshot:
+        with self._sessions.begin() as session:
+            return self.read(session, target, cutoff, ingredient_ids)
+
+    def read(self, session: Session, target: date, cutoff: datetime,
+             ingredient_ids: tuple[str, ...]) -> ForecastSnapshot:
         origin = week_start(cutoff.astimezone(WIB).date())
         lag_weeks = [origin - offset * WEEK for offset in range(1, len(LAGS) + 1)]
-        with self._sessions.begin() as session:
-            catalog = _catalog_at_model_version(session, self._model_catalog)
-            versions, order_sources = _order_versions(session, target, cutoff)
-            demand_rows = session.scalars(
-                select(WeeklyDemandRecord)
-                .where(WeeklyDemandRecord.week_start.in_(lag_weeks),
-                       WeeklyDemandRecord.ingredient_id.in_(ingredient_ids),
-                       WeeklyDemandRecord.available_at <= cutoff)
-            ).all()
-            history_sources = {row.source for row in demand_rows if row.complete}
-            provenance = order_sources | history_sources
-            if provenance == {"synthetic"}:
-                source = "synthetic"
-            elif provenance <= {"live", "operational"}:
-                source = "live"
-            elif history_sources == {"synthetic"} and order_sources <= {"synthetic", "live", "operational"}:
-                # Demo orders can use synthetic lags without inheriting simulated feedback.
-                source = "mixed"
-            else:
-                raise ForecastError(422, "INVALID_FORECAST_INPUT", "Sumber data prediksi tidak konsisten.")
-            try:
-                confirmed, snapshot_id = DemandIndex(versions, catalog).confirmed_snapshot(cutoff, target)
-                history = {
-                    (row.week_start, row.ingredient_id): HistoryEntry(
-                        WeeklyDemand(row.week_start, row.ingredient_id, row.quantity, row.available_at, row.complete),
-                        row.base_unit,
-                    )
-                    for row in demand_rows
-                }
-            except ValueError as exc:
-                raise ForecastError(422, "INVALID_FORECAST_INPUT", "Data penyimpanan tidak valid untuk prediksi.") from exc
-            units = {identifier: catalog.units[identifier] for identifier in ingredient_ids}
-            feedback = _read_simulated_feedback(session, origin - WEEK, cutoff, units) if source == "synthetic" else {}
-            return ForecastSnapshot(
-                snapshot_id, target, cutoff, catalog.version,
-                {key: ConfirmedDemand(confirmed[key], unit) for key, unit in units.items()},
-                history, feedback, source,
-            )
+        catalog = _catalog_at_model_version(session, self._model_catalog)
+        versions, order_sources = _order_versions(session, target, cutoff)
+        demand_rows = session.scalars(
+            select(WeeklyDemandRecord)
+            .where(WeeklyDemandRecord.week_start.in_(lag_weeks),
+                   WeeklyDemandRecord.ingredient_id.in_(ingredient_ids),
+                   WeeklyDemandRecord.available_at <= cutoff)
+        ).all()
+        history_sources = {row.source for row in demand_rows if row.complete}
+        provenance = order_sources | history_sources
+        if provenance == {"synthetic"}:
+            source = "synthetic"
+        elif provenance <= {"live", "operational"}:
+            source = "live"
+        elif history_sources == {"synthetic"} and order_sources <= {"synthetic", "live", "operational"}:
+            # Demo orders can use synthetic lags without inheriting simulated feedback.
+            source = "mixed"
+        else:
+            raise ForecastError(422, "INVALID_FORECAST_INPUT", "Sumber data prediksi tidak konsisten.")
+        try:
+            confirmed, snapshot_id = DemandIndex(versions, catalog).confirmed_snapshot(cutoff, target)
+            history = {
+                (row.week_start, row.ingredient_id): HistoryEntry(
+                    WeeklyDemand(row.week_start, row.ingredient_id, row.quantity, row.available_at, row.complete),
+                    row.base_unit,
+                )
+                for row in demand_rows
+            }
+        except ValueError as exc:
+            raise ForecastError(422, "INVALID_FORECAST_INPUT", "Data penyimpanan tidak valid untuk prediksi.") from exc
+        units = {identifier: catalog.units[identifier] for identifier in ingredient_ids}
+        feedback = read_approved_feedback(session, origin - WEEK, cutoff, units, source)
+        return ForecastSnapshot(
+            snapshot_id, target, cutoff, catalog.version,
+            {key: ConfirmedDemand(confirmed[key], unit) for key, unit in units.items()},
+            history, feedback, source,
+        )
 
 
 class DatabaseRuns:
@@ -147,24 +126,27 @@ class DatabaseRuns:
         self._clock = clock
 
     def save(self, run: ForecastRun) -> None:
+        with self._sessions.begin() as session:
+            self.record(session, run)
+
+    def record(self, session: Session, run: ForecastRun) -> None:
         audit = {
             identifier: {**asdict(entry),
                          "available_at": entry.available_at.isoformat() if entry.available_at is not None else None}
             for identifier, entry in run.feedback_audit.items()
         }
-        with self._sessions.begin() as session:
-            session.add(ForecastRunRecord(
-                forecast_run_id=run.forecast_run_id, target_period=run.target_period, model_version=run.model_version,
-                cutoff_at=run.cutoff, published_at=self._clock(), snapshot_id=run.snapshot_id,
-                bom_version=run.bom_version, calendar_version=run.calendar_version, source=run.source,
-                season_flags=dict(run.season_flags), feedback_reasons=dict(run.feedback_reasons), feedback_audit=audit,
-            ))
-            session.flush()
-            session.add_all([
-                ForecastRunItem(
-                    forecast_run_id=run.forecast_run_id, ingredient_id=item.ingredient_id, base_unit=item.base_unit,
-                    predicted_demand=item.predicted_demand, prev_error_adj=item.prev_error_adj,
-                    confirmed_bom=run.confirmed_bom[item.ingredient_id],
-                )
-                for item in run.items
-            ])
+        session.add(ForecastRunRecord(
+            forecast_run_id=run.forecast_run_id, target_period=run.target_period, model_version=run.model_version,
+            cutoff_at=run.cutoff, published_at=self._clock(), snapshot_id=run.snapshot_id,
+            bom_version=run.bom_version, calendar_version=run.calendar_version, source=run.source,
+            season_flags=dict(run.season_flags), feedback_reasons=dict(run.feedback_reasons), feedback_audit=audit,
+        ))
+        session.flush()
+        session.add_all([
+            ForecastRunItem(
+                forecast_run_id=run.forecast_run_id, ingredient_id=item.ingredient_id, base_unit=item.base_unit,
+                predicted_demand=item.predicted_demand, prev_error_adj=item.prev_error_adj,
+                confirmed_bom=run.confirmed_bom[item.ingredient_id],
+            )
+            for item in run.items
+        ])

@@ -237,6 +237,15 @@ class ForecastService:
 
     def forecast(self, target_period: str, ingredient_ids=None, *, cutoff: datetime,
                  snapshot: ForecastSnapshot | None = None) -> ForecastRun:
+        run = self.build_run(target_period, ingredient_ids, cutoff=cutoff, snapshot=snapshot)
+        self._runs.save(run)
+        return run
+
+    def build_run(
+        self, target_period: str, ingredient_ids=None, *, cutoff: datetime,
+        snapshot: ForecastSnapshot | None = None, snapshots: SnapshotProvider | None = None,
+    ) -> ForecastRun:
+        """Compute a forecast run for the caller to persist in its own transaction."""
         target = parse_period(target_period)
         if not isinstance(cutoff, datetime) or cutoff.utcoffset() is None:
             raise ForecastError(400, "VALIDATION_ERROR", "Cutoff harus memiliki zona waktu.")
@@ -254,7 +263,8 @@ class ForecastService:
         except ValueError as exc:
             raise ForecastError(500, "INTERNAL_ERROR", "Kalender prediksi tidak tersedia untuk periode ini.") from exc
         if snapshot is None:
-            snapshot = self._snapshots(target, cutoff, ids)
+            provider = self._snapshots if snapshots is None else snapshots
+            snapshot = provider(target, cutoff, ids)
         rows = predictor.prepare(target, cutoff, ids, snapshot)
         items = predictor._predict_prepared(ids, rows)
         feedback_audit = {}
@@ -269,10 +279,8 @@ class ForecastService:
                 record.sources.source, reference.run_id if reference else None,
                 record.raw_residual, bound, record.available_at
             )
-        run = ForecastRun(f"FC-{target_period}-{uuid4().hex}", target_period, predictor.model_version,
-                          {flag: rows[0][flag] for flag in FLAGS}, items, cutoff, snapshot.snapshot_id,
-                          snapshot.bom_version, predictor.calendar.version, snapshot.source,
-                          {identifier: row["feedback_reason"] for identifier, row in zip(ids, rows, strict=True)},
-                          feedback_audit, {identifier: snapshot.confirmed[identifier].quantity for identifier in ids})
-        self._runs.save(run)
-        return run
+        return ForecastRun(f"FC-{target_period}-{uuid4().hex}", target_period, predictor.model_version,
+                           {flag: rows[0][flag] for flag in FLAGS}, items, cutoff, snapshot.snapshot_id,
+                           snapshot.bom_version, predictor.calendar.version, snapshot.source,
+                           {identifier: row["feedback_reason"] for identifier, row in zip(ids, rows, strict=True)},
+                           feedback_audit, {identifier: snapshot.confirmed[identifier].quantity for identifier in ids})

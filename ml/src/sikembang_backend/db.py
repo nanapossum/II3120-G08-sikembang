@@ -12,7 +12,12 @@ from .models import Base
 
 
 def _missing_provenance_columns(inspector: Inspector) -> list[tuple[str, str]]:
-    columns = (("order_revisions", "source"), ("iot_telemetry_logs", "device_source"))
+    columns = (
+        ("order_revisions", "source"),
+        ("iot_telemetry_logs", "device_source"),
+        ("devices", "location_id"),
+        ("iot_telemetry_logs", "location_id"),
+    )
     return [(table, column) for table, column in columns
             if column not in {info["name"] for info in inspector.get_columns(table)}]
 
@@ -48,7 +53,7 @@ def create_database(path: Path | str) -> Engine:
 
 
 def initialize(engine: Engine) -> None:
-    """Create missing tables and upgrade 6A provenance columns in place."""
+    """Create missing tables and upgrade provenance columns in place."""
     path = engine.url.database
     if path and path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)

@@ -3,6 +3,7 @@
 import re
 from collections import Counter, defaultdict
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -247,16 +248,18 @@ class OrderService:
                                                                  confirmed_portions=item.confirmed_portions))
         return OrderList(planning_period=planning_period, orders=list(orders.values()))
 
-    def explode_bom(self, planning_period: str, *, cutoff: datetime | None = None) -> dict[str, BomRequirement]:
+    def explode_bom(
+        self, planning_period: str, *, cutoff: datetime | None = None, session: Session | None = None,
+    ) -> dict[str, BomRequirement]:
         """Aggregate all remaining confirmed portions by ingredient, in persisted canonical units."""
         monday = _planning_monday(planning_period)
         cutoff = _wib(cutoff if cutoff is not None else self._clock())
-        with self._sessions() as session:
+        with (self._sessions() if session is None else nullcontext(session)) as db:
             portions = Counter()
-            for _, _, item in _planning_rows(session, monday, cutoff, "CONFIRMED"):
+            for _, _, item in _planning_rows(db, monday, cutoff, "CONFIRMED"):
                 if item is not None:
                     portions[item.bom_version, item.menu_id] += item.confirmed_portions
-            rows = session.execute(
+            rows = db.execute(
                 select(BomRecipe, Ingredient.base_unit)
                 .join(Ingredient, Ingredient.ingredient_id == BomRecipe.ingredient_id)
                 .where(tuple_(BomRecipe.bom_version, BomRecipe.menu_id).in_(list(portions)))
@@ -280,13 +283,14 @@ class OrderService:
         return {key: BomRequirement(float(quantity), units[key]) for key, quantity in sorted(totals.items())}
 
 
-def create_order_router(service: OrderService, auth: Auth) -> APIRouter:
+def create_order_router(service: OrderService, auth: Auth, *,
+                        read_access: Callable[..., str] | None = None) -> APIRouter:
     errors = {status: {"model": ErrorEnvelope} for status in (400, 401, 403, 404, 409, 422)}
     router = APIRouter(prefix="/api/orders", tags=["orders"],
                        responses={"default": {"model": ErrorEnvelope},
                                   **{status: errors[status] for status in (400, 401, 403)}})
     marketing = Depends(auth.require("MARKETING"))
-    ppic = Depends(auth.require("PPIC"))
+    reader = Depends(read_access or auth.require("PPIC"))
 
     @router.post("", status_code=201, dependencies=[marketing], responses={422: errors[422]})
     def create(body: CreateOrder) -> CreatedOrder:
@@ -296,7 +300,7 @@ def create_order_router(service: OrderService, auth: Auth) -> APIRouter:
     def revise(order_id: str, body: ReviseOrder) -> RevisedOrder:
         return service.revise(order_id, body)
 
-    @router.get("", dependencies=[ppic])
+    @router.get("", dependencies=[reader])
     def list_orders(planning_period: Annotated[str, Query(pattern=r"^[0-9]{4}-W[0-9]{2}$")],
                     status: OrderStatus = "CONFIRMED", updated_since: UpdatedSince | None = None) -> OrderList:
         return service.list_orders(planning_period, status=status, updated_since=updated_since)
