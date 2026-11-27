@@ -1,29 +1,70 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { configureAuth } from '@/api/http'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { Credentials, DashboardIdentity } from '@/api/auth'
 import { config } from '@/api/config'
+import { configureAuth } from '@/api/http'
+import { Spinner } from '@/components/ui'
+import { createLiveSession } from './liveSession'
 
-export type Role = 'MARKETING' | 'PPIC' | 'PFA'
-type Session = { role: Role; setRole: (r: Role) => void; canSwitchRole: boolean }
+export type Role = DashboardIdentity['role']
+type Session =
+  | { mode: 'mock'; role: Role; setRole: (role: Role) => void }
+  | {
+      mode: 'live'
+      role: Role | null
+      error?: string
+      signIn: (credentials: Credentials) => Promise<void>
+      signOut: () => void
+    }
 const Ctx = createContext<Session | null>(null)
 
-/*
- * Sesi sementara. Mode mock: role bisa diganti lewat pemilih di header.
- * Mode live: ganti dengan login sungguhan (JWT Bearer): isi getToken() dari penyimpanan token
- * dan role dari klaim token. Komponen lain hanya memakai useSession().
- */
-export function SessionProvider({ children }: { children: ReactNode }) {
+function MockSessionProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('PPIC')
-  useEffect(() => {
-    configureAuth({
-      getToken: () => sessionStorage.getItem('access_token'),
-      onUnauthorized: () => console.warn('401: arahkan ke halaman login'),
-    })
-  }, [])
-  const value = useMemo(() => ({ role, setRole, canSwitchRole: config.mode === 'mock' }), [role])
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ mode: 'mock', role, setRole }}>{children}</Ctx.Provider>
 }
-export const useSession = () => {
-  const c = useContext(Ctx)
-  if (!c) throw new Error('useSession harus di dalam SessionProvider')
-  return c
+
+function LiveSessionProvider({ children }: { children: ReactNode }) {
+  const client = useQueryClient()
+  const [session] = useState(() => createLiveSession(sessionStorage, () => client.clear()))
+  const state = useSyncExternalStore(session.subscribe, session.getSnapshot)
+
+  useEffect(() => {
+    configureAuth(session)
+    void session.restore()
+    return () => configureAuth({ getToken: () => null, onUnauthorized: () => {} })
+  }, [session])
+
+  if (state.status === 'checking') return <Spinner label="Memeriksa sesi" />
+
+  return (
+    <Ctx.Provider
+      value={{
+        mode: 'live',
+        role: state.status === 'signedIn' ? state.identity.role : null,
+        error: state.status === 'signedOut' ? state.error : undefined,
+        signIn: session.signIn,
+        signOut: session.signOut,
+      }}
+    >
+      {children}
+    </Ctx.Provider>
+  )
+}
+
+export function SessionProvider({ children }: { children: ReactNode }) {
+  const Provider = config.mode === 'mock' ? MockSessionProvider : LiveSessionProvider
+  return <Provider>{children}</Provider>
+}
+
+export function useSession() {
+  const session = useContext(Ctx)
+  if (!session) throw new Error('useSession harus di dalam SessionProvider')
+  return session
 }

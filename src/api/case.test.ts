@@ -17,4 +17,8 @@ describe('konversi kunci', () => {
 })
 describe('periode ISO', () => {
   it('24 Nov 2026 = 2026-W48', () => expect(isoWeek(new Date(2026, 10, 24))).toBe('2026-W48'))
+  it('berganti minggu pada Senin pukul 00.00 WIB', () => {
+    expect(isoWeek(new Date('2026-11-29T16:59:59Z'))).toBe('2026-W48')
+    expect(isoWeek(new Date('2026-11-29T17:00:00Z'))).toBe('2026-W49')
+  })
 })

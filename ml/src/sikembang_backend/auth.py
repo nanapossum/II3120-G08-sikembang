@@ -199,12 +199,20 @@ class Auth:
     def dashboard_role(self, credentials: Bearer) -> DashboardRole:
         return self._dashboard_identity(credentials).role
 
-    def require(self, *roles: DashboardRole) -> Callable[[Bearer], DashboardRole]:
-        def enforce(credentials: Bearer) -> DashboardRole:
-            role = self.dashboard_role(credentials)
-            if role not in roles:
+    def require_identity(self, *roles: DashboardRole) -> Callable[[Bearer], DashboardIdentity]:
+        def enforce(credentials: Bearer) -> DashboardIdentity:
+            identity = self._dashboard_identity(credentials)
+            if identity.role not in roles:
                 raise _forbidden_role()
-            return role
+            return identity
+
+        return enforce
+
+    def require(self, *roles: DashboardRole) -> Callable[[Bearer], DashboardRole]:
+        identity_for_roles = self.require_identity(*roles)
+
+        def enforce(credentials: Bearer) -> DashboardRole:
+            return identity_for_roles(credentials).role
 
         return enforce
 

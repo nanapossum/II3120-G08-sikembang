@@ -21,6 +21,7 @@ from .inventory import InventoryIoTService, create_inventory_router
 from .orders import OrderService, create_order_router
 from .procurement import ProcurementCalcService, create_procurement_router
 from .settings import Settings
+from .shopping_lists import ShoppingListService, create_shopping_list_router
 
 logger = logging.getLogger(__name__)
 
@@ -98,4 +99,5 @@ def create_app(settings: Settings | None = None, *, clock: Callable[[], datetime
     app.include_router(create_router(service, reader_role, clock=lambda: settings.demo_cutoff or clock()))
     app.include_router(create_procurement_router(procurement, auth))
     app.include_router(create_draft_router(drafts, system, sessions, clock=clock))
+    app.include_router(create_shopping_list_router(ShoppingListService(sessions, clock=clock), auth))
     return app

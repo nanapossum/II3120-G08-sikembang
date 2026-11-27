@@ -121,7 +121,7 @@ Default seed mengikuti minggu berjalan WIB. Untuk replay yang dibekukan, isi `SI
 
 Artefak dan bundle Sprint 2–3 dapat dibangkitkan melalui perintah di bagian sebelumnya bila belum tersedia. Beri `SIKEMBANG_ARTIFACT` path direktori artefak untuk mengaktifkan inferensi. Sejak Sprint 6C, konfigurasi model yang kosong atau artefak yang gagal dimuat membuat permintaan AI mengembalikan `500 MODEL_UNAVAILABLE`. Health, login, dan kalkulasi eksplisit tanpa AI tetap tersedia. Init database adalah langkah eksplisit.
 
-Vite dapat meneruskan `/api` melalui `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000`. Klien frontend live sudah membaca `sessionStorage.access_token`, sedangkan layar login dan workflow bisnis menyusul pada sprint berikutnya. Uji backend 6A melalui OpenAPI atau HTTP client. Skema dan provenance dirinci di [dokumentasi data backend](../docs/backend-data.md).
+Vite meneruskan `/api` melalui `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000`. Frontend live menggunakan login JWT, pemulihan sesi, dan rute sesuai peran. [Perintah menjalankan frontend di Windows](../README.md#menjalankan-mode-live-di-windows) · [Skema dan provenance](../docs/backend-data.md)
 
 ```powershell
 rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q -p no:cacheprovider

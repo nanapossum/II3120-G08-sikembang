@@ -1,3 +1,6 @@
+import type { z } from 'zod'
+import type { ListsRes } from '../contracts'
+
 // Data awal untuk mode mock, mengikuti contoh payload Bab 9 laporan.
 const ago = (min: number) => new Date(Date.now() - min * 60000).toISOString()
 const now = () => new Date().toISOString()
@@ -91,12 +94,6 @@ export const orders: Order[] = [
   },
 ]
 
-export type ListRow = {
-  list_id: string
-  planning_period: string
-  status: string
-  sent_at: string | null
-  items: Record<string, unknown>[]
-}
+export type ListRow = z.infer<typeof ListsRes>['lists'][number]
 export const lists: ListRow[] = []
 export const counters = { order: 413, list: 0, log: 981 }

@@ -9,9 +9,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
     plugins: [react(), tailwindcss()],
-    resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
+    resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
     server: {
       port: 5173,
+      watch: { ignored: ['**/ml/**', '**/.ai-context/**', '**/pytest-cache-files-*/**'] },
       proxy: env.VITE_DEV_PROXY_TARGET
         ? { '/api': { target: env.VITE_DEV_PROXY_TARGET, changeOrigin: true } }
         : undefined,

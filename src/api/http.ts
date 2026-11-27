@@ -9,12 +9,16 @@ type Opts = {
   body?: unknown
   headers?: Record<string, string>
   signal?: AbortSignal
+  auth?: 'none'
 }
 
 let getToken: () => string | null = () => null
-let onUnauthorized: () => void = () => {}
+let onUnauthorized: (token: string) => void = () => {}
 /** Dipanggil sekali oleh SessionProvider. Autentikasi backend bisa diganti tanpa menyentuh service. */
-export function configureAuth(p: { getToken: () => string | null; onUnauthorized: () => void }) {
+export function configureAuth(p: {
+  getToken: () => string | null
+  onUnauthorized: (token: string) => void
+}) {
   getToken = p.getToken
   onUnauthorized = p.onUnauthorized
 }
@@ -23,13 +27,13 @@ export async function request<S extends z.ZodType>(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   schema: S,
-  { query, body, headers, signal }: Opts = {},
+  { query, body, headers, signal, auth }: Opts = {},
 ): Promise<Camelize<z.output<S>>> {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(snakeifyKeys(query ?? {}) as Query)) {
     if (v !== undefined && v !== null) qs.set(k, String(v))
   }
-  const token = getToken()
+  const token = auth === 'none' ? null : getToken()
   const res = await fetch(`${config.baseUrl}${path}${qs.size ? `?${qs}` : ''}`, {
     method,
     signal: signal ?? AbortSignal.timeout(config.timeoutMs),
@@ -44,7 +48,7 @@ export async function request<S extends z.ZodType>(
 
   const json: unknown = await res.json().catch(() => null)
   if (!res.ok) {
-    if (res.status === 401) onUnauthorized()
+    if (res.status === 401 && token) onUnauthorized(token)
     const err = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)
       ?.error
     throw new ApiError(

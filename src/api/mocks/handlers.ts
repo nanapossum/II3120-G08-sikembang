@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { counters, ingredients, lists, orders, stockStatus, type Order } from './db'
+import { counters, ingredients, lists, orders, stockStatus, type ListRow, type Order } from './db'
 
 const err = (status: number, code: string, message: string, details: unknown = {}) =>
   HttpResponse.json({ error: { code, message, details } }, { status })
@@ -60,28 +60,54 @@ export const handlers = [
   ),
 
   http.post(`${A}/procurement/calculate`, async ({ request }) => {
-    const { planning_period } = (await request.json()) as { planning_period: string }
+    const { planning_period, include_forecast = true } = (await request.json()) as {
+      planning_period: string
+      include_forecast?: boolean
+    }
     if (lists.some((l) => l.planning_period === planning_period))
       return err(409, 'ACTIVE_LIST_EXISTS', 'Periode ini sudah punya daftar aktif')
-    const list = {
+    const list: ListRow = {
       list_id: `SL-${planning_period}-${String(++counters.list).padStart(2, '0')}`,
       planning_period,
       status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      forecast_run_id: include_forecast ? `MOCK-${planning_period}` : null,
+      validated_by: null,
+      validated_at: null,
       sent_at: null,
-      items: ingredients.map((i) => ({
-        ingredient_id: i.id,
-        base_unit: i.unit,
-        bom_confirmed_need: i.bom,
-        ai_additional_forecast: i.ai,
-        safety_stock: i.safety,
-        iot_available_stock: i.stock,
-        stock_status: stockStatus(i.sync),
-        system_net_recommendation: Math.max(0, round(i.bom + i.ai + i.safety - i.stock)),
-        warnings: stockStatus(i.sync) === 'STALE' ? ['Stok usang, periksa stok fisik'] : [],
-      })),
+      procurement_required: null,
+      ppic_notes: null,
+      warnings: [],
+      items: ingredients.map((i) => {
+        const additional = include_forecast ? i.ai : 0
+        const net = Math.max(0, i.bom + additional + i.safety - i.stock)
+        return {
+          ingredient_id: i.id,
+          name: i.name,
+          base_unit: i.unit,
+          bom_confirmed_need: i.bom,
+          ai_additional_forecast: additional,
+          safety_stock: i.safety,
+          iot_available_stock: i.stock,
+          stock_status: stockStatus(i.sync),
+          system_net_recommendation: i.unit === 'butir' ? Math.round(net) : round(net),
+          ppic_final_qty: null,
+          ppic_notes: null,
+        }
+      }),
     }
+    list.warnings = list.items
+      .filter((i) => i.stock_status === 'STALE')
+      .map((i) => ({
+        code: 'STALE_STOCK',
+        ingredient_id: i.ingredient_id,
+        message: `Periksa stok fisik ${i.name} sebelum menyetujui.`,
+      }))
     lists.push(list)
-    return HttpResponse.json(list, { status: 201 })
+    return HttpResponse.json(
+      { ...list, include_forecast, model_version: include_forecast ? 'mock' : null },
+      { status: 201 },
+    )
   }),
 
   http.get(`${A}/shopping-lists`, ({ request }) => {
@@ -90,11 +116,25 @@ export const handlers = [
     const period = q.get('planning_period')
     const out = lists
       .filter((l) => l.status === status && (!period || l.planning_period === period))
-      .map((l) =>
-        status === 'SENT_TO_PFA'
-          ? { ...l, items: l.items.filter((i) => Number(i.ppic_final_qty) > 0) }
-          : l,
-      )
+      .map((l) => {
+        if (status !== 'SENT_TO_PFA') return l
+        const items = l.items.filter((i) => (i.ppic_final_qty ?? 0) > 0)
+        // The mock PFA screen requests all sent lists. The mock PPIC screen requests a period.
+        if (period) return { ...l, items }
+        return {
+          list_id: l.list_id,
+          planning_period: l.planning_period,
+          status: l.status,
+          sent_at: l.sent_at,
+          items: items.map(({ ingredient_id, name, base_unit, ppic_final_qty, ppic_notes }) => ({
+            ingredient_id,
+            name,
+            base_unit,
+            ppic_final_qty,
+            ppic_notes,
+          })),
+        }
+      })
     return HttpResponse.json({ lists: out })
   }),
 
@@ -103,28 +143,48 @@ export const handlers = [
     if (!l) return err(404, 'LIST_NOT_FOUND', 'Daftar tidak ditemukan')
     if (l.status !== 'DRAFT')
       return err(409, 'INVALID_STATUS_TRANSITION', 'Hanya DRAFT yang bisa disetujui')
-    const { items } = (await request.json()) as {
-      items: { ingredient_id: string; ppic_final_qty: number; ppic_notes?: string }[]
+    const { items, ppic_notes } = (await request.json()) as {
+      items: { ingredient_id: string; ppic_final_qty: number; unit?: string; ppic_notes?: string }[]
+      ppic_notes?: string
     }
-    for (const it of items) {
+    const decisions = new Map(items.map((i) => [i.ingredient_id, i]))
+    if (items.length !== l.items.length || l.items.some((i) => !decisions.has(i.ingredient_id)))
+      return err(422, 'INCOMPLETE_ITEMS', 'Lengkapi semua bahan dalam daftar')
+    for (const row of l.items) {
+      const it = decisions.get(row.ingredient_id)!
       if (it.ppic_final_qty < 0)
         return err(422, 'NEGATIVE_VALUE', 'Kuantitas akhir tidak boleh negatif')
-      const row = l.items.find((r) => r.ingredient_id === it.ingredient_id)
-      if (row?.stock_status === 'STALE' && !it.ppic_notes?.trim())
+      if (it.unit && it.unit !== row.base_unit)
+        return err(422, 'UNIT_MISMATCH', 'Satuan tidak cocok dengan satuan dasar bahan')
+      if (row.stock_status === 'STALE' && !it.ppic_notes?.trim())
         return err(422, 'STALE_STOCK_NOTE_REQUIRED', 'Catatan wajib untuk stok usang', {
           ingredient_id: it.ingredient_id,
         })
     }
-    for (const it of items)
-      Object.assign(l.items.find((r) => r.ingredient_id === it.ingredient_id) ?? {}, {
-        ppic_final_qty: it.ppic_final_qty,
-        ppic_notes: it.ppic_notes,
-      })
+    for (const row of l.items) {
+      const it = decisions.get(row.ingredient_id)!
+      row.ppic_final_qty = it.ppic_final_qty
+      row.ppic_notes = it.ppic_notes?.trim() || null
+    }
     l.status = 'VALIDATED_BY_PPIC'
+    l.validated_by = 'ppic.mock'
+    l.validated_at = new Date().toISOString()
+    l.procurement_required = items.some((i) => i.ppic_final_qty > 0)
+    l.ppic_notes = ppic_notes?.trim() || null
     return HttpResponse.json({
       list_id: l.list_id,
       status: l.status,
-      procurement_required: items.some((i) => i.ppic_final_qty > 0),
+      validated_by: l.validated_by,
+      validated_at: l.validated_at,
+      procurement_required: l.procurement_required,
+      items: l.items.map(
+        ({ ingredient_id, base_unit, system_net_recommendation, ppic_final_qty }) => ({
+          ingredient_id,
+          base_unit,
+          system_net_recommendation,
+          ppic_final_qty,
+        }),
+      ),
     })
   }),
 
@@ -133,8 +193,7 @@ export const handlers = [
     if (!l) return err(404, 'LIST_NOT_FOUND', 'Daftar tidak ditemukan')
     if (l.status !== 'VALIDATED_BY_PPIC')
       return err(409, 'INVALID_STATUS_TRANSITION', 'Daftar belum divalidasi')
-    if (!l.items.some((i) => Number(i.ppic_final_qty) > 0))
-      return err(409, 'NOTHING_TO_SEND', 'Tidak ada yang dikirim')
+    if (!l.procurement_required) return err(409, 'NOTHING_TO_SEND', 'Tidak ada yang dikirim')
     l.status = 'SENT_TO_PFA'
     l.sent_at = new Date().toISOString()
     return HttpResponse.json({ list_id: l.list_id, status: l.status, sent_at: l.sent_at })
