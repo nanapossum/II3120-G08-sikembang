@@ -1,0 +1,79 @@
+{
+  "version": "synthetic-bom-v1",
+  "source": "synthetic",
+  "valid_from": "2020-01-01",
+  "valid_until_exclusive": null,
+  "ingredients": [
+    {
+      "ingredient_id": "ING-001",
+      "name": "Beras",
+      "base_unit": "kg"
+    },
+    {
+      "ingredient_id": "ING-003",
+      "name": "Ayam",
+      "base_unit": "kg"
+    },
+    {
+      "ingredient_id": "ING-007",
+      "name": "Telur",
+      "base_unit": "butir"
+    },
+    {
+      "ingredient_id": "ING-009",
+      "name": "Santan",
+      "base_unit": "liter"
+    },
+    {
+      "ingredient_id": "ING-012",
+      "name": "Minyak goreng",
+      "base_unit": "liter"
+    }
+  ],
+  "menus": [
+    {
+      "menu_id": "MNU-N01",
+      "name": "Nasi putih",
+      "recipe": {
+        "ING-001": 0.075
+      }
+    },
+    {
+      "menu_id": "MNU-A01",
+      "name": "Ayam bakar",
+      "recipe": {
+        "ING-003": 0.12,
+        "ING-009": 0.01,
+        "ING-012": 0.005
+      }
+    },
+    {
+      "menu_id": "MNU-S01",
+      "name": "Sayur asem",
+      "recipe": {
+        "ING-012": 0.002
+      }
+    },
+    {
+      "menu_id": "MNU-W01",
+      "name": "Paket prasmanan",
+      "recipe": {
+        "ING-001": 0.15,
+        "ING-003": 0.1,
+        "ING-007": 1,
+        "ING-009": 0.02,
+        "ING-012": 0.01
+      }
+    },
+    {
+      "menu_id": "MNU-K02",
+      "name": "Nasi kotak ayam",
+      "recipe": {
+        "ING-001": 0.09,
+        "ING-003": 0.08,
+        "ING-007": 1,
+        "ING-012": 0.006
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=72.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sikembang-ai-forecast"
+version = "0.2.0"
+description = "Synthetic weekly ingredient demand dataset for SiKembang"
+requires-python = ">=3.13"
+dependencies = ["numpy>=2.2,<3", "tzdata>=2025.2"]
+
+[project.optional-dependencies]
+test = ["pytest>=9,<10"]
+
+[project.scripts]
+sikembang-dataset = "ai_forecast.dataset:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/sikembang-ai-forecast/config" = ["config/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

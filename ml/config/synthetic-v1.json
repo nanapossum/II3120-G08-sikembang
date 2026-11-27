@@ -1,0 +1,56 @@
+{
+  "version": "synthetic-v1",
+  "source": "synthetic",
+  "daily_noise_log_sigma": 0.24,
+  "creation_lead_hours": [2, 48],
+  "confirmation_hours": [7, 10],
+  "service_hours": [12, 19],
+  "fulfillment_reporting_delay_minutes": [0, 60],
+  "revision": {
+    "cancellation_probability": 0.055,
+    "move_probability": 0.085,
+    "portion_change_probability": 0.28,
+    "portion_factor": [0.65, 1.45],
+    "max_move_days": 7,
+    "max_reporting_delay_minutes": 240
+  },
+  "categories": {
+    "PRASMANAN_WEDDING": {
+      "orders_per_day": 0.3,
+      "lead_days": [7, 56],
+      "portions": [120, 600],
+      "weekday_factor": 0.6,
+      "weekend_factor": 2.0,
+      "is_ramadan_season": 0.65,
+      "is_wedding_season": 1.65,
+      "is_year_end": 1.10,
+      "package_menu": "MNU-W01",
+      "component_probability": 0.23
+    },
+    "PRASMANAN_NON_WEDDING": {
+      "orders_per_day": 0.8,
+      "lead_days": [2, 21],
+      "portions": [45, 260],
+      "weekday_factor": 0.92,
+      "weekend_factor": 1.2,
+      "is_ramadan_season": 1.35,
+      "is_wedding_season": 1.05,
+      "is_year_end": 1.25,
+      "package_menu": "MNU-W01",
+      "component_probability": 0.65
+    },
+    "NASI_KOTAK": {
+      "orders_per_day": 1.5,
+      "lead_days": [0, 10],
+      "portions": [15, 160],
+      "weekday_factor": 1.12,
+      "weekend_factor": 0.7,
+      "is_ramadan_season": 1.45,
+      "is_wedding_season": 1.0,
+      "is_year_end": 1.12,
+      "package_menu": "MNU-K02",
+      "component_probability": 0.0
+    }
+  },
+  "component_menus": ["MNU-N01", "MNU-A01", "MNU-S01"]
+}

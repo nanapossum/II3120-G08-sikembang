@@ -1,0 +1,17 @@
+{
+  "version": "calendar-id-synth-v1",
+  "source": "synthetic",
+  "description": "Kalender Ramadan tabular untuk simulasi; musim pernikahan dan akhir tahun merupakan asumsi prototipe.",
+  "ramadan_intervals": [
+    ["2020-04-24", "2020-05-23"],
+    ["2021-04-13", "2021-05-12"],
+    ["2022-04-03", "2022-05-02"],
+    ["2023-03-23", "2023-04-21"],
+    ["2024-03-11", "2024-04-09"],
+    ["2025-03-01", "2025-03-30"],
+    ["2026-02-18", "2026-03-19"]
+  ],
+  "wedding_months": [6, 7, 11],
+  "year_end_start": [12, 15],
+  "minimum_days_in_week": 4
+}
