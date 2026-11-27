@@ -3,11 +3,25 @@
 import sqlite3
 from pathlib import Path
 
-from sqlalchemy import URL, Engine, create_engine, event
+from sqlalchemy import URL, Engine, create_engine, event, inspect
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from .models import Base
+
+
+def _missing_provenance_columns(inspector: Inspector) -> list[tuple[str, str]]:
+    columns = (("order_revisions", "source"), ("iot_telemetry_logs", "device_source"))
+    return [(table, column) for table, column in columns
+            if column not in {info["name"] for info in inspector.get_columns(table)}]
+
+
+def schema_is_ready(engine: Engine) -> bool:
+    with engine.connect() as connection:
+        inspector = inspect(connection)
+        return (Base.metadata.tables.keys() <= set(inspector.get_table_names())
+                and not _missing_provenance_columns(inspector))
 
 
 def _enable_foreign_keys(connection: sqlite3.Connection, _record: object) -> None:
@@ -34,11 +48,14 @@ def create_database(path: Path | str) -> Engine:
 
 
 def initialize(engine: Engine) -> None:
-    """Create missing tables without replacing database contents."""
+    """Create missing tables and upgrade 6A provenance columns in place."""
     path = engine.url.database
     if path and path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        Base.metadata.create_all(connection)
+        for table, column in _missing_provenance_columns(inspect(connection)):
+            connection.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} VARCHAR")
 
 
 def session_factory(engine: Engine) -> sessionmaker[Session]:

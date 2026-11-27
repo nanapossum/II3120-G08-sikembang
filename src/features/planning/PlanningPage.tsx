@@ -137,13 +137,19 @@ export function PlanningPage() {
                 {stock.data?.items.map((i) => (
                   <tr key={i.ingredientId} className="odd:bg-n-50">
                     <td className="px-2 py-2">{i.name}</td>
-                    <td className="text-right">{formatQty(i.currentStock, i.baseUnit)}</td>
+                    <td className="text-right">
+                      {i.currentStock === null
+                        ? 'Belum diketahui'
+                        : formatQty(i.currentStock, i.baseUnit)}
+                    </td>
                     <td className="pl-3">
                       {i.stockStatus === 'FRESH' ? (
                         <Tag tone="success">Segar</Tag>
                       ) : (
                         <Tag tone="warning">
-                          Usang, {minutesAgo(i.lastIotSync) ?? '?'} menit lalu
+                          {i.lastIotSync
+                            ? `Usang, ${minutesAgo(i.lastIotSync) ?? '?'} menit lalu`
+                            : 'Belum sinkron'}
                         </Tag>
                       )}
                     </td>

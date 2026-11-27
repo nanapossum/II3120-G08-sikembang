@@ -115,7 +115,7 @@ rtk proxy ml\.venv\Scripts\python.exe -m sikembang_backend.manage seed
 rtk proxy ml\.venv\Scripts\python.exe -m uvicorn sikembang_backend.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-Server menyediakan `GET /api/health`, `/docs`, `POST /api/auth/login`, `GET /api/auth/me`, dan router D2 `POST /api/ai/predict`. Login menerima JSON `username` dan `password`, lalu menyediakan `access_token` untuk header Authorization Bearer. MARKETING, PPIC, dan PFA adalah peran dashboard. X-Device-Key memakai dependency khusus perangkat yang siap dipasang pada route telemetry. SYSTEM dipakai untuk pemanggilan internal.
+Server menyediakan `GET /api/health`, `/docs`, `POST /api/auth/login`, `GET /api/auth/me`, dan router D2 `POST /api/ai/predict`. Login menerima JSON `username` dan `password`, lalu menyediakan `access_token` untuk header Authorization Bearer. MARKETING, PPIC, dan PFA adalah peran dashboard. SYSTEM dipakai untuk pemanggilan internal.
 
 Default seed mengikuti minggu berjalan WIB. Untuk replay yang dibekukan, isi `SIKEMBANG_DEMO_CUTOFF` dengan timestamp WIB yang sesuai, misalnya `2025-03-05T12:00:00+07:00`, dan jalankan `seed --period 2025-W10`. Gunakan path SQLite tersendiri untuk replay bila ingin mempertahankan demo berjalan. Seeder memasukkan baris yang belum ada dan memeriksa konflik kredensial serta kelayakan histori pada seed ulang. Perubahan kredensial yang sudah tersimpan memerlukan alur administrasi terpisah.
 
@@ -126,3 +126,11 @@ Vite dapat meneruskan `/api` melalui `VITE_DEV_PROXY_TARGET=http://127.0.0.1:800
 ```powershell
 rtk proxy ml\.venv\Scripts\python.exe -m pytest ml/tests -q -p no:cacheprovider
 ```
+
+## Order dan inventaris Sprint 6B
+
+Untuk database Sprint 6A yang sudah ada, jalankan kembali `rtk proxy ml\.venv\Scripts\python.exe -m sikembang_backend.manage init-db` dengan path database yang sama. Inisialisasi menambahkan kolom provenance revisi dan telemetry serta tabel audit request rusak. Data yang sudah tersimpan tetap ada.
+
+Dengan aplikasi dan database dari langkah 6A, akun Marketing dapat membuat order melalui `POST /api/orders` dan mengirim revisi lengkap melalui `PUT /api/orders/{order_id}` dengan versi yang terakhir dibaca. Akun PPIC dapat membaca order melalui `GET /api/orders?planning_period=2026-W48` dan stok melalui `GET /api/inventory/stock?ingredient_ids=ING-001,ING-012`. Gunakan minggu ISO sesuai tanggal acara.
+
+`POST /api/iot/telemetry` memerlukan `X-Device-Key` dan pasangan sensor–bahan yang terdaftar. Untuk beras, registry demo memakai `SNS-GDG-01` dan `ING-001`. Kirim timestamp berzona yang berusia maksimal 300 detik. Stok tanpa waktu sinkronisasi atau dengan sinkronisasi lebih dari 60 menit berstatus `STALE`. Nilai `null` berarti kuantitas stok belum diketahui.

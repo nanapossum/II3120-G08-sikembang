@@ -14,6 +14,11 @@ erDiagram
     INGREDIENTS ||--o{ DEVICES : mapped_to
     DEVICES o|--o{ IOT_TELEMETRY_LOGS : authenticates
     INGREDIENTS o|--o{ IOT_TELEMETRY_LOGS : measures
+    IOT_TELEMETRY_REQUEST_REJECTIONS {
+        string log_id PK
+        datetime received_at
+        string rejection_code
+    }
     INGREDIENTS ||--o{ WEEKLY_DEMAND : aggregates
     INGREDIENTS ||--o{ FEEDBACK_EVIDENCE : reconciles
     FORECAST_RUNS ||--o{ FORECAST_RUN_ITEMS : predicts
@@ -26,9 +31,10 @@ erDiagram
 
 | Tabel | Kunci dan semantik |
 |---|---|
-| `orders`, `order_revisions`, `order_items` | Identitas order tetap. PK revisi `(order_id, version)`, PK item `(order_id, version, menu_id)`. Item menunjuk revisi yang tepat. Status, tanggal acara, waktu efektif dan waktu tersedia melekat pada revisi. |
+| `orders`, `order_revisions`, `order_items` | Identitas order tetap. PK revisi `(order_id, version)`, PK item `(order_id, version, menu_id)`. Item menunjuk revisi yang tepat. Status, tanggal acara, waktu efektif, waktu tersedia, dan provenance input operator melekat pada revisi. Revisi lama dengan sumber kosong membaca sumber dari order. |
 | `ingredients`, `menus`, `bom_recipes` | ID dan satuan dasar dari katalog. Resep per porsi diidentifikasi oleh `(menu_id, ingredient_id, bom_version)`. Order item menyimpan versi BOM. |
-| `users`, `devices`, `iot_telemetry_logs` | Username dan sensor ID unik, kredensial disimpan dalam bentuk hash. Log memuat paket mentah, keputusan dan waktu terima. Paket ditolak dapat mempertahankan ID yang diklaim. Paket diterima menyimpan mapping sensor serta nilai/satuan kanonis. |
+| `users`, `devices`, `iot_telemetry_logs` | Username dan sensor ID unik, kredensial disimpan dalam bentuk hash. Log memuat field paket, keputusan, dan waktu terima. Paket ditolak dapat mempertahankan ID yang diklaim. Paket diterima menyimpan mapping dan sumber sensor saat diterima serta nilai dan satuan kanonis. |
+| `iot_telemetry_request_rejections` | Request yang gagal pada parsing atau validasi struktur menyimpan ID audit, waktu terima, dan kode validasi. Isi mentah dan kredensial tidak disimpan. |
 | `weekly_demand`, `feedback_evidence` | Agregat kebutuhan pada `(week_start, ingredient_id)` dengan kelengkapan, satuan, dan waktu tersedia. Kunci feedback menambahkan waktu approval untuk memilih snapshot historis yang tepat. |
 | `forecast_runs`, `forecast_run_items` | Satu run berisi waktu cutoff/publikasi, versi model, snapshot, provenance dan audit feedback. Item menyimpan BOM terkonfirmasi pada origin, prediksi tambahan dan koreksi terpakai. Header dan item disimpan sebagai satu transaksi. |
 | `shopping_lists`, `shopping_list_items` | State D2, referensi run opsional, warning, metadata review/sent, komponen kalkulasi dan kuantitas/catatan PPIC. Periode unik karena ketiga state D2 yang tersedia tetap mencadangkan daftar. |

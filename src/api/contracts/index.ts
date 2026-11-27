@@ -47,7 +47,7 @@ export const StockRes = z.looseObject({
     z.looseObject({
       ingredient_id: z.string(),
       name: z.string(),
-      current_stock: z.number(),
+      current_stock: z.number().nullable(),
       base_unit: BaseUnit,
       safety_stock: z.number(),
       last_iot_sync: z.string().nullish(),

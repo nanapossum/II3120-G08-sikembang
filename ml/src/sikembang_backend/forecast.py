@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC, date, datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ai_forecast.features import LAGS, WEEK, WeeklyDemand
@@ -18,6 +18,7 @@ from .models import (
     BomRecipe, FeedbackEvidenceRecord, ForecastRunItem, ForecastRunRecord, Ingredient,
     Order, OrderItem, OrderRevision, WeeklyDemandRecord,
 )
+from .orders import latest_order_revisions
 
 
 def _catalog_at_model_version(session: Session, expected: Catalog) -> Catalog:
@@ -31,13 +32,8 @@ def _catalog_at_model_version(session: Session, expected: Catalog) -> Catalog:
     return Catalog(expected.version, units, {row.ingredient_id: row.name for row in ingredients}, dict(recipes))
 
 
-def _order_versions(session: Session, target: date, cutoff: datetime) -> list[Version]:
-    latest_visible = (
-        select(OrderRevision.order_id, func.max(OrderRevision.version).label("version"))
-        .where(OrderRevision.effective_at <= cutoff, OrderRevision.available_at <= cutoff)
-        .group_by(OrderRevision.order_id)
-        .subquery()
-    )
+def _order_versions(session: Session, target: date, cutoff: datetime) -> tuple[list[Version], set[str]]:
+    latest_visible = latest_order_revisions(cutoff)
     included = (
         select(latest_visible.c.order_id, latest_visible.c.version)
         .join(OrderRevision, and_(OrderRevision.order_id == latest_visible.c.order_id,
@@ -49,7 +45,7 @@ def _order_versions(session: Session, target: date, cutoff: datetime) -> list[Ve
     )
     # Older versions preserve the revision lineage. Later versions cannot affect this cutoff.
     rows = session.execute(
-        select(Order, OrderRevision, OrderItem)
+        select(Order, OrderRevision, OrderItem, included.c.version)
         .join(OrderRevision, OrderRevision.order_id == Order.order_id)
         .join(included, and_(included.c.order_id == OrderRevision.order_id,
                              OrderRevision.version <= included.c.version))
@@ -57,16 +53,19 @@ def _order_versions(session: Session, target: date, cutoff: datetime) -> list[Ve
                                    OrderItem.version == OrderRevision.version))
     )
     items_by_revision = defaultdict(list)
-    for order, revision, item in rows:
+    selected_sources = set()
+    for order, revision, item, selected_version in rows:
+        if revision.version == selected_version:
+            selected_sources.add(revision.source or order.source)
         items = items_by_revision[order, revision]
         if item is not None:
             items.append(Item(item.menu_id, item.confirmed_portions, item.bom_version))
     return [
         Version(order.order_id, order.category, revision.version, order.created_at,
                 revision.confirmed_at, revision.effective_at, revision.available_at,
-                revision.status, revision.event_date, revision.fulfilled_at, tuple(items), order.source)
+                revision.status, revision.event_date, revision.fulfilled_at, tuple(items), revision.source or order.source)
         for (order, revision), items in items_by_revision.items()
-    ]
+    ], selected_sources
 
 
 def _read_simulated_feedback(session: Session, week: date, cutoff: datetime, units: dict[str, str]):
@@ -104,18 +103,24 @@ class DatabaseSnapshots:
         lag_weeks = [origin - offset * WEEK for offset in range(1, len(LAGS) + 1)]
         with self._sessions.begin() as session:
             catalog = _catalog_at_model_version(session, self._model_catalog)
-            versions = _order_versions(session, target, cutoff)
+            versions, order_sources = _order_versions(session, target, cutoff)
             demand_rows = session.scalars(
                 select(WeeklyDemandRecord)
                 .where(WeeklyDemandRecord.week_start.in_(lag_weeks),
                        WeeklyDemandRecord.ingredient_id.in_(ingredient_ids),
                        WeeklyDemandRecord.available_at <= cutoff)
             ).all()
-            provenance = {version.source for version in versions}
-            provenance.update(row.source for row in demand_rows if row.complete)
-            if not (provenance <= {"synthetic"} or provenance <= {"live", "operational"}):
+            history_sources = {row.source for row in demand_rows if row.complete}
+            provenance = order_sources | history_sources
+            if provenance == {"synthetic"}:
+                source = "synthetic"
+            elif provenance <= {"live", "operational"}:
+                source = "live"
+            elif history_sources == {"synthetic"} and order_sources <= {"synthetic", "live", "operational"}:
+                # Demo orders can use synthetic lags without inheriting simulated feedback.
+                source = "mixed"
+            else:
                 raise ForecastError(422, "INVALID_FORECAST_INPUT", "Sumber data prediksi tidak konsisten.")
-            source = "synthetic" if provenance == {"synthetic"} else "live"
             try:
                 confirmed, snapshot_id = DemandIndex(versions, catalog).confirmed_snapshot(cutoff, target)
                 history = {

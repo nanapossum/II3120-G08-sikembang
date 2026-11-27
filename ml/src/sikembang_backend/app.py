@@ -1,30 +1,36 @@
 """The SiKembang FastAPI application. Serve create_app with Uvicorn --factory."""
 
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import APIRouter, FastAPI
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from ai_forecast.api import create_router
-from ai_forecast.fixtures import WIB
-from ai_forecast.predictor import ForecastService, Predictor, ForecastError
+from ai_forecast.fixtures import WIB, load_fixtures
+from ai_forecast.predictor import ForecastError, ForecastService, Predictor
 
 from .auth import Auth
-from .db import create_database, session_factory
+from .db import create_database, schema_is_ready, session_factory
 from .errors import install_handlers
 from .forecast import DatabaseRuns, DatabaseSnapshots
-from .models import Base
+from .inventory import InventoryIoTService, create_inventory_router
+from .orders import OrderService, create_order_router
 from .settings import Settings
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def _now_wib() -> datetime:
+    return datetime.now(WIB)
+
+
+def create_app(settings: Settings | None = None, *, clock: Callable[[], datetime] = _now_wib) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.database_path.is_file():
         raise RuntimeError("Database belum ada. Jalankan init-db terlebih dahulu.")
     engine = create_database(settings.database_path)
     try:
-        if not Base.metadata.tables.keys() <= set(inspect(engine).get_table_names()):
+        if not schema_is_ready(engine):
             raise RuntimeError("Schema database belum lengkap. Jalankan init-db terlebih dahulu.")
         predictor = Predictor.load(settings.artifact_dir) if settings.artifact_dir else None
     except ForecastError as exc:
@@ -45,11 +51,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_handlers(app)
     sessions = session_factory(engine)
     auth = Auth(sessions, settings.jwt_secret.get_secret_value())
-    snapshots = DatabaseSnapshots(sessions, catalog=predictor.catalog if predictor else None)
-    service = ForecastService(predictor, snapshots, DatabaseRuns(sessions))
+    catalog = predictor.catalog if predictor else load_fixtures()[0]
+    snapshots = DatabaseSnapshots(sessions, catalog=catalog)
+    service = ForecastService(predictor, snapshots, DatabaseRuns(sessions, clock=clock))
+    orders = OrderService(sessions, clock=clock, catalog=catalog)
+    inventory = InventoryIoTService(sessions, clock=clock)
     app.state.sessions = sessions
     app.state.auth = auth
     app.state.forecasts = service
+    app.state.orders = orders
+    app.state.inventory = inventory
 
     health = APIRouter(prefix="/api", tags=["health"])
 
@@ -61,5 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health)
     app.include_router(auth.router)
-    app.include_router(create_router(service, auth.dashboard_role, clock=lambda: settings.demo_cutoff or datetime.now(WIB)))
+    app.include_router(create_order_router(orders, auth))
+    app.include_router(create_inventory_router(inventory, auth))
+    app.include_router(create_router(service, auth.dashboard_role, clock=lambda: settings.demo_cutoff or clock()))
     return app

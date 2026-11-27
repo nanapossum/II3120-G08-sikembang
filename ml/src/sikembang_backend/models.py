@@ -138,6 +138,7 @@ class OrderRevision(Base):
     available_at: Mapped[datetime]
     confirmed_at: Mapped[datetime | None]
     fulfilled_at: Mapped[datetime | None]
+    source: Mapped[str | None]
 
 
 class OrderItem(Base):
@@ -185,6 +186,15 @@ class IoTTelemetryLog(Base):
     rejection_code: Mapped[str | None]
     stored_value: Mapped[float | None]
     base_unit: Mapped[str | None]
+    device_source: Mapped[str | None]
+
+
+class IoTTelemetryRequestRejection(Base):
+    __tablename__ = "iot_telemetry_request_rejections"
+
+    log_id: Mapped[str] = mapped_column(primary_key=True)
+    received_at: Mapped[datetime] = mapped_column(index=True)
+    rejection_code: Mapped[str]
 
 
 class WeeklyDemandRecord(Base):
