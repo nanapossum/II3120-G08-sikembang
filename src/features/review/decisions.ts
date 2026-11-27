@@ -47,6 +47,12 @@ export function netWithoutAi(l: Line) {
   return Number(`${rounded}e-${unitPlaces}`)
 }
 
+export function canRejectAi(l: Line): boolean {
+  if (l.iotAvailableStock === null || l.aiAdditionalForecast <= 0) return false
+  const withoutAi = netWithoutAi(l)
+  return withoutAi !== null && withoutAi !== l.systemNetRecommendation
+}
+
 export const initialDecision = (l: Line): Decision => ({
   mode: 'ACCEPT',
   finalQty: l.systemNetRecommendation,
@@ -62,12 +68,45 @@ export function setMode(l: Line, d: Decision, mode: Mode, rejectReason?: string)
   return { mode, finalQty: d.finalQty, note: d.note }
 }
 
+export function setManualQty(d: Decision, finalQty: number): Decision {
+  return {
+    mode: 'EDIT',
+    finalQty,
+    note: d.note,
+  }
+}
+
+export function rowFormula(l: Line, d: Decision): {
+  expression: string
+  effectiveNet: number
+  isSurplus: boolean
+} {
+  const ai = d.mode === 'REJECT_AI' ? 0 : l.aiAdditionalForecast
+  const stock = l.iotAvailableStock ?? 0
+  const rawNet = l.bomConfirmedNeed + ai + l.safetyStock - stock
+  const effectiveNet =
+    d.mode === 'REJECT_AI' ? (netWithoutAi(l) ?? l.systemNetRecommendation) : l.systemNetRecommendation
+  const nf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 })
+  const fineNf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 })
+  const fmt = (n: number) => (n > 0 && n < 0.001 ? fineNf.format(n) : nf.format(n))
+  const parts =
+    d.mode === 'REJECT_AI'
+      ? `${fmt(l.bomConfirmedNeed)} + ${fmt(l.safetyStock)} − ${fmt(stock)}`
+      : `${fmt(l.bomConfirmedNeed)} + ${fmt(ai)} + ${fmt(l.safetyStock)} − ${fmt(stock)}`
+  return {
+    expression: parts,
+    effectiveNet,
+    isSurplus: rawNet <= 0,
+  }
+}
+
 /** Pesan galat per bahan. Kosong = siap disetujui. */
 export function validate(lines: Line[], ds: Record<string, Decision>): Record<string, string> {
   const out: Record<string, string> = {}
   for (const l of lines) {
     const d = ds[l.ingredientId]
     if (!d) out[l.ingredientId] = 'Belum ada keputusan'
+    else if (Number.isNaN(d.finalQty)) out[l.ingredientId] = 'Isi kuantitas akhir (minimal 0)'
     else if (!Number.isFinite(d.finalQty) || d.finalQty < 0)
       out[l.ingredientId] = 'Kuantitas tidak boleh negatif'
     else if (d.mode === 'REJECT_AI' && !d.rejectReason)

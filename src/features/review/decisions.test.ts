@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canRejectAi,
   initialDecision,
   netWithoutAi,
+  rowFormula,
+  setManualQty,
   setMode,
   toApproveItems,
   validate,
@@ -62,5 +65,41 @@ describe('keputusan PPIC', () => {
     expect(toApproveItems([beras], { [beras.ingredientId]: d })[0].ppicNotes).toContain(
       'AI ditolak',
     )
+  })
+  it('mengubah qty final manual dari mode tolak AI pindah ke EDIT dan menghapus alasan tolak', () => {
+    const rejected = setMode(beras, initialDecision(beras), 'REJECT_AI', 'Prediksi tidak realistis')
+    const edited = setManualQty({ ...rejected, note: 'Cek ulang' }, 31.5)
+    expect(edited).toEqual({ mode: 'EDIT', finalQty: 31.5, note: 'Cek ulang' })
+    expect(toApproveItems([beras], { [beras.ingredientId]: edited })[0].ppicNotes).toBe('Cek ulang')
+  })
+  it('ringkasan perhitungan per baris mencerminkan stok presisi dan status tolak AI', () => {
+    const berasIot: Line = {
+      ...beras,
+      bomConfirmedNeed: 60,
+      aiAdditionalForecast: 6.278,
+      iotAvailableStock: 0.206,
+      systemNetRecommendation: 71.072,
+    }
+    const accepted = rowFormula(berasIot, initialDecision(berasIot))
+    expect(accepted.expression).toBe('60 + 6,278 + 5 − 0,206')
+    expect(accepted.isSurplus).toBe(false)
+    const rejected = rowFormula(
+      berasIot,
+      setMode(berasIot, initialDecision(berasIot), 'REJECT_AI', 'Lainnya'),
+    )
+    expect(rejected.expression).toBe('60 + 5 − 0,206')
+    expect(rejected.effectiveNet).toBe(64.794)
+  })
+  it('kuantitas kosong (NaN) memberi pesan validasi ramah', () => {
+    const emptyQty = setManualQty(initialDecision(beras), Number.NaN)
+    expect(validate([beras], { [beras.ingredientId]: emptyQty })[beras.ingredientId]).toMatch(
+      /Isi kuantitas/,
+    )
+  })
+  it('tolak AI hanya relevan jika komponen AI benar-benar mengubah saran sistem', () => {
+    expect(canRejectAi(beras)).toBe(true)
+    expect(canRejectAi(minyak)).toBe(false)
+    expect(canRejectAi({ ...beras, aiAdditionalForecast: 0 })).toBe(false)
+    expect(canRejectAi({ ...beras, iotAvailableStock: null })).toBe(false)
   })
 })

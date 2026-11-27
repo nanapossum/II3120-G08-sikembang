@@ -17,9 +17,53 @@ from .auth import Auth, DashboardIdentity, DashboardRole
 from .drafts import DraftWarning, parse_planning_period
 from .errors import AppError
 from .inventory import BaseUnit, canonical_quantity
-from .models import Ingredient, ShoppingList, ShoppingListItem
+from .models import ForecastRunRecord, Ingredient, ShoppingList, ShoppingListItem
 
 ListStatus = Literal["DRAFT", "VALIDATED_BY_PPIC", "SENT_TO_PFA"]
+
+_SEASON_LABELS = (
+    ("is_wedding_season", "Musim pernikahan", "Musim pernikahan (+25% antisipasi tambahan)"),
+    ("is_ramadan_season", "Musim Ramadan", "Musim Ramadan (+15% antisipasi tambahan)"),
+    ("is_year_end", "Akhir tahun", "Periode akhir tahun (+10% antisipasi tambahan)"),
+)
+
+
+class ForecastContext(BaseModel):
+    model_version: str
+    season_flags: dict[str, bool]
+    active_seasons: list[str]
+    drivers: list[str]
+    feedback_applied_count: int
+    source: str
+
+
+def build_forecast_context(
+    *,
+    model_version: str,
+    season_flags: dict[str, bool],
+    feedback_reasons: dict[str, str],
+    source: str,
+) -> ForecastContext:
+    flags = {key: bool(value) for key, value in season_flags.items()}
+    active_seasons = [label for key, label, _ in _SEASON_LABELS if flags.get(key)]
+    drivers = [driver for key, _, driver in _SEASON_LABELS if flags.get(key)]
+    if not drivers:
+        drivers.append("Pola permintaan reguler (non-musiman)")
+    drivers.extend([
+        "Volume pesanan terkonfirmasi minggu ini",
+        "Histori permintaan 4 minggu terakhir",
+    ])
+    feedback_applied_count = sum(1 for reason in feedback_reasons.values() if reason == "VALID")
+    if feedback_applied_count > 0:
+        drivers.append(f"Koreksi feedback IoT minggu lalu ({feedback_applied_count} bahan)")
+    return ForecastContext(
+        model_version=model_version,
+        season_flags=flags,
+        active_seasons=active_seasons,
+        drivers=drivers,
+        feedback_applied_count=feedback_applied_count,
+        source=source,
+    )
 
 
 class ApprovalItem(BaseModel):
@@ -87,6 +131,7 @@ class PPICList(BaseModel):
     status: ListStatus
     created_at: datetime
     forecast_run_id: str | None
+    forecast_context: ForecastContext | None = None
     warnings: list[DraftWarning]
     ppic_notes: str | None
     validated_by: str | None
@@ -223,7 +268,23 @@ class ShoppingListService:
 
             if role == "PFA":
                 return ListsResponse(lists=[_for_pfa(row, items[row.list_id]) for row in shopping_lists])
-            return ListsResponse(lists=[_for_ppic(row, items[row.list_id]) for row in shopping_lists])
+            run_ids = [row.forecast_run_id for row in shopping_lists if row.forecast_run_id]
+            runs = (
+                {
+                    run.forecast_run_id: run
+                    for run in session.scalars(
+                        select(ForecastRunRecord).where(ForecastRunRecord.forecast_run_id.in_(run_ids))
+                    )
+                }
+                if run_ids
+                else {}
+            )
+            return ListsResponse(
+                lists=[
+                    _for_ppic(row, items[row.list_id], runs.get(row.forecast_run_id) if row.forecast_run_id else None)
+                    for row in shopping_lists
+                ]
+            )
 
 
 def _for_pfa(row: ShoppingList, items: list[tuple[ShoppingListItem, str]]) -> PFAList:
@@ -234,10 +295,24 @@ def _for_pfa(row: ShoppingList, items: list[tuple[ShoppingListItem, str]]) -> PF
     )
 
 
-def _for_ppic(row: ShoppingList, items: list[tuple[ShoppingListItem, str]]) -> PPICList:
+def _for_ppic(
+    row: ShoppingList,
+    items: list[tuple[ShoppingListItem, str]],
+    run: ForecastRunRecord | None = None,
+) -> PPICList:
+    context = (
+        build_forecast_context(
+            model_version=run.model_version,
+            season_flags=run.season_flags or {},
+            feedback_reasons=run.feedback_reasons or {},
+            source=run.source,
+        )
+        if run is not None
+        else None
+    )
     return PPICList(
         list_id=row.list_id, planning_period=row.planning_period, status=row.status, created_at=row.created_at.astimezone(WIB),
-        forecast_run_id=row.forecast_run_id, warnings=row.warnings, ppic_notes=row.ppic_notes,
+        forecast_run_id=row.forecast_run_id, forecast_context=context, warnings=row.warnings, ppic_notes=row.ppic_notes,
         validated_by=row.validated_by, validated_at=row.validated_at.astimezone(WIB) if row.validated_at else None,
         procurement_required=row.procurement_required, sent_at=row.sent_at.astimezone(WIB) if row.sent_at else None,
         items=[PPICItem(ingredient_id=item.ingredient_id, name=name, base_unit=item.base_unit,

@@ -366,3 +366,18 @@ def test_concurrent_transitions_have_a_single_winner(api, operation):
     assert persisted["list_id"] == list_id
     if operation == "approve":
         assert persisted["items"][1]["ppic_final_qty"] == succeeded.json()["items"][1]["ppic_final_qty"]
+
+
+def test_build_forecast_context_summarizes_active_seasons_and_feedback():
+    from sikembang_backend.shopping_lists import build_forecast_context
+
+    ctx = build_forecast_context(
+        model_version="xgb-v1-test",
+        season_flags={"is_ramadan_season": False, "is_wedding_season": True, "is_year_end": False},
+        feedback_reasons={"ING-001": "VALID", "ING-003": "FEEDBACK_NOT_AVAILABLE"},
+        source="mixed",
+    )
+    assert ctx.active_seasons == ["Musim pernikahan"]
+    assert any("Musim pernikahan" in driver for driver in ctx.drivers)
+    assert any("feedback IoT" in driver for driver in ctx.drivers)
+    assert ctx.feedback_applied_count == 1

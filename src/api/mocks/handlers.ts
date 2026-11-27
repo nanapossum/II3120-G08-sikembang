@@ -72,6 +72,24 @@ export const handlers = [
       status: 'DRAFT',
       created_at: new Date().toISOString(),
       forecast_run_id: include_forecast ? `MOCK-${planning_period}` : null,
+      forecast_context: include_forecast
+        ? {
+            model_version: 'mock',
+            season_flags: {
+              is_ramadan_season: false,
+              is_wedding_season: true,
+              is_year_end: false,
+            },
+            active_seasons: ['Musim pernikahan'],
+            drivers: [
+              'Musim pernikahan (+25% antisipasi tambahan)',
+              'Volume pesanan terkonfirmasi minggu ini',
+              'Histori permintaan 4 minggu terakhir',
+            ],
+            feedback_applied_count: 0,
+            source: 'mock',
+          }
+        : null,
       validated_by: null,
       validated_at: null,
       sent_at: null,

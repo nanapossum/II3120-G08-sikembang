@@ -213,3 +213,34 @@ def test_invalid_feature_inputs_fail_explicitly(inputs, overrides):
 
     with pytest.raises(ValueError):
         build_features(**(inputs | overrides))
+
+
+def test_contextual_adjustment_reflects_wedding_season_and_order_volume():
+    from ai_forecast.predictor import apply_contextual_adjustment
+
+    regular_row = {
+        "scale": 100.0,
+        "confirmed_bom": 60.0,
+        "days_remaining": 3,
+        "is_ramadan_season": False,
+        "is_wedding_season": False,
+        "is_year_end": False,
+    }
+    wedding_row = {**regular_row, "is_wedding_season": True}
+    high_order_wedding_row = {**wedding_row, "confirmed_bom": 140.0}
+    empty_regular_row = {**regular_row, "confirmed_bom": 0.0}
+
+    regular_pred = apply_contextual_adjustment(5.0, regular_row, "kg")
+    wedding_pred = apply_contextual_adjustment(5.0, wedding_row, "kg")
+    high_order_pred = apply_contextual_adjustment(5.0, high_order_wedding_row, "kg")
+    empty_regular_pred = apply_contextual_adjustment(5.0, empty_regular_row, "kg")
+    santan_wedding_pred = apply_contextual_adjustment(
+        0.0,
+        {**wedding_row, "scale": 15.0, "confirmed_bom": 8.0},
+        "liter",
+    )
+
+    assert empty_regular_pred == 5.0
+    assert wedding_pred > regular_pred
+    assert high_order_pred > wedding_pred
+    assert santan_wedding_pred > 0.0

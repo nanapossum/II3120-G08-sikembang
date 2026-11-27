@@ -210,7 +210,10 @@ def test_replay_feature_and_output_parity(context):
         expected = next(r for r in csv.DictReader(predictions) if
                         (r["ingredient_id"], r["target_period"], r["cutoff_at"])
                         == (row["ingredient_id"], row["target_period"], row["cutoff_at"]))
-    assert predictor.predict(target, cutoff, ("ING-001",), snapshot)[0].predicted_demand == float(expected["xgboost"])
+    from ai_forecast.predictor import apply_contextual_adjustment
+
+    expected_adjusted = apply_contextual_adjustment(float(expected["xgboost"]), prepared, "kg")
+    assert predictor.predict(target, cutoff, ("ING-001",), snapshot)[0].predicted_demand == expected_adjusted
 
 
 def test_feedback_reaches_api_once_and_keeps_internal_provenance(client_factory, context):
@@ -225,9 +228,12 @@ def test_feedback_reaches_api_once_and_keeps_internal_provenance(client_factory,
     assert row["feedback_available"] == 1
     assert row["prev_error_adj"] == pytest.approx(9.792)
 
+    from ai_forecast.predictor import apply_contextual_adjustment
+
     model, _ = load_artifact(ARTIFACT, predictor.names)
     matrix = [[row["model_features"][name] for name in predictor.names]]
-    expected, = native_predictions(predict(model, matrix, predictor.names), [row["scale"]], ["kg"])
+    base_expected, = native_predictions(predict(model, matrix, predictor.names), [row["scale"]], ["kg"])
+    expected = apply_contextual_adjustment(float(base_expected), row, "kg")
     payload = {"target_period": "2025-W10", "ingredient_ids": list(ids)}
     client, runs = client_factory()
     response = client.post("/api/ai/predict", json=payload, headers=PPIC)

@@ -20,6 +20,7 @@ from .forecast import DatabaseRuns, DatabaseSnapshots
 from .inventory import InventoryIoTService
 from .models import Ingredient, IoTTelemetryLog
 from .orders import OrderService
+from .shopping_lists import ForecastContext, build_forecast_context
 
 
 class CalculateRequest(BaseModel):
@@ -39,6 +40,7 @@ class Calculation(BaseModel):
     include_forecast: bool
     forecast_run_id: str | None
     model_version: str | None
+    forecast_context: ForecastContext | None = None
 
 
 class ProcurementCalcService:
@@ -135,9 +137,20 @@ class ProcurementCalcService:
                 self._runs.record(session, run)
             run_id = run.forecast_run_id if run else None
             self._drafts.populate(session, draft, items, warnings, run_id, principal=self._system)
+            context = (
+                build_forecast_context(
+                    model_version=run.model_version,
+                    season_flags=dict(run.season_flags),
+                    feedback_reasons=dict(run.feedback_reasons),
+                    source=run.source,
+                )
+                if run is not None
+                else None
+            )
             return Calculation(list_id=draft.list_id, planning_period=body.planning_period, created_at=cutoff,
                                items=items, warnings=warnings, include_forecast=body.include_forecast,
-                               forecast_run_id=run_id, model_version=run.model_version if run else None)
+                               forecast_run_id=run_id, model_version=run.model_version if run else None,
+                               forecast_context=context)
 
 
 def create_procurement_router(service: ProcurementCalcService, auth: Auth) -> APIRouter:

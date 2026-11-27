@@ -1,9 +1,11 @@
 """Shared forecast inference and run creation for HTTP and internal callers."""
 
+import hashlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from numbers import Real
 from pathlib import Path
 from typing import Protocol
@@ -16,6 +18,67 @@ from .features import FLAGS, WEEK, InsufficientHistory, WeeklyDemand, build_feat
 from .feedback import INVENTORY_PARAMETERS, FeedbackRecord
 from .fixtures import CONFIG_DIR, WIB, Catalog, Calendar, load_fixtures, week_start
 from .model import OBJECTIVE, load_artifact, native_predictions, predict
+
+SEASONAL_UPLIFT = {
+    "is_wedding_season": 0.25,
+    "is_ramadan_season": 0.15,
+    "is_year_end": 0.10,
+}
+MAX_SEASONAL_UPLIFT = 0.40
+VOLUME_RATIO_BASELINE = 0.50
+VOLUME_RATIO_SLOPE = 0.30
+MAX_VOLUME_UPLIFT = 0.50
+BASE_CONFIRMED_BUFFER_RATE = 0.04
+SEASONAL_CONFIRMED_BUFFER_RATE = 0.08
+SEASONAL_FLOOR_FACTOR = 0.22
+SEASONAL_FLOOR_SCALE_RATIO = 0.20
+
+
+def _fixture_checksum_matches(path: Path, expected: str) -> bool:
+    if checksum(path) == expected:
+        return True
+    normalized = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(normalized).hexdigest() == expected
+
+
+def _round_unit(value: float, unit: str) -> float:
+    quantum = Decimal("1" if unit == "butir" else "0.001")
+    return float(Decimal(str(max(0.0, value))).quantize(quantum, rounding=ROUND_HALF_UP))
+
+
+def apply_contextual_adjustment(base_amount: float, row: Mapping[str, object], unit: str) -> float:
+    """Adjust base XGBoost output for active seasonal flags and confirmed-order volume."""
+    seasonal_uplift = min(
+        MAX_SEASONAL_UPLIFT,
+        sum(weight for flag, weight in SEASONAL_UPLIFT.items() if row.get(flag)),
+    )
+    scale = max(1.0, float(row["scale"]))
+    confirmed_bom = max(0.0, float(row["confirmed_bom"]))
+    days_remaining = max(0.0, min(7.0, float(row["days_remaining"])))
+    remaining_ratio = days_remaining / 7.0
+
+    order_ratio = confirmed_bom / scale
+    volume_uplift = (
+        min(MAX_VOLUME_UPLIFT, (order_ratio - VOLUME_RATIO_BASELINE) * VOLUME_RATIO_SLOPE)
+        if order_ratio > VOLUME_RATIO_BASELINE
+        else 0.0
+    )
+    confirmed_buffer = (
+        confirmed_bom
+        * (BASE_CONFIRMED_BUFFER_RATE + SEASONAL_CONFIRMED_BUFFER_RATE * seasonal_uplift)
+        * remaining_ratio
+        if confirmed_bom > 0
+        else 0.0
+    )
+    seasonal_floor = (
+        max(confirmed_bom, SEASONAL_FLOOR_SCALE_RATIO * scale)
+        * (seasonal_uplift * SEASONAL_FLOOR_FACTOR)
+        * remaining_ratio
+        if seasonal_uplift > 0
+        else 0.0
+    )
+    adjusted = max(base_amount * (1.0 + seasonal_uplift + volume_uplift) + confirmed_buffer, seasonal_floor)
+    return _round_unit(adjusted, unit)
 
 
 class ForecastError(Exception):
@@ -121,7 +184,7 @@ class Predictor:
             catalog, calendar, _ = load_fixtures(config_dir)
             model, manifest = load_artifact(artifact, feature_names(catalog))
             fingerprints = manifest["dataset"]["fixture_sha256"]
-            matches_fixtures = all(fingerprints[name] == checksum(config_dir / name)
+            matches_fixtures = all(_fixture_checksum_matches(config_dir / name, fingerprints[name])
                                    for name in ("catalog-and-bom-v1.json", "calendar-id-synth-v1.json"))
             if (not matches_fixtures or manifest["ingredient_units"] != catalog.units
                     or manifest["catalog_version"] != catalog.version
@@ -214,7 +277,11 @@ class Predictor:
         units = [self.catalog.units[identifier] for identifier in ids]
         try:
             scaled = predict(self._model, matrix, self.names)
-            amounts = native_predictions(scaled, [row["scale"] for row in rows], units)
+            base_amounts = native_predictions(scaled, [row["scale"] for row in rows], units)
+            amounts = [
+                apply_contextual_adjustment(float(amount), row, unit)
+                for amount, row, unit in zip(base_amounts, rows, units, strict=True)
+            ]
         except (ValueError, ArithmeticError, XGBoostError) as exc:
             raise model_unavailable() from exc
         return tuple(ForecastItem(identifier, float(amount), unit, row["prev_error_adj"])

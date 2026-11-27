@@ -14,8 +14,8 @@ const MENU_OPTIONS = [
 ]
 const CATEGORIES = [
   { value: 'PRASMANAN_WEDDING', label: 'Prasmanan Wedding' },
-  { value: 'PRASMANAN_NON_WEDDING', label: 'Prasmanan Non-Wedding' },
-  { value: 'NASI_KOTAK', label: 'Nasi kotak' },
+  { value: 'PRASMANAN_NON_WEDDING', label: 'Non-Wedding' },
+  { value: 'NASI_KOTAK', label: 'Nasi Kotak' },
 ] as const
 
 const schema = z.object({
@@ -61,7 +61,8 @@ export function OrderFormPage() {
     },
   })
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
-  const total = (watch('items') ?? []).reduce((s, i) => s + (Number(i.confirmedPortions) || 0), 0)
+  const watchedItems = watch('items') ?? []
+  const total = watchedItems.reduce((s, i) => s + (Number(i.confirmedPortions) || 0), 0)
 
   const save = useMutation({
     mutationFn: ordersApi.create,
@@ -75,64 +76,93 @@ export function OrderFormPage() {
     <>
       <PageHead
         title="Catat Pesanan Terkonfirmasi"
-        sub="Masukkan detail pesanan yang sudah dikonfirmasi pelanggan."
+        sub="Masukkan detail pesanan pelanggan yang sudah dikonfirmasi agar langsung terbaca di perencanaan PPIC."
       />
+
       <form
         onSubmit={handleSubmit((v) => save.mutate(v))}
-        className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"
+        className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
         noValidate
       >
-        <Card className="flex min-w-0 flex-col gap-5">
-          <div>
-            <h2 className="mb-3 text-base font-bold">Informasi Pesanan</h2>
-            <div className="grid grid-cols-2 gap-4">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Card className="flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-slate-900">Informasi Pesanan</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nama pelanggan" error={errors.customerName?.message}>
-                <Input aria-invalid={!!errors.customerName} {...register('customerName')} />
+                <Input
+                  placeholder="Contoh: Keluarga Wibowo"
+                  aria-invalid={!!errors.customerName}
+                  {...register('customerName')}
+                />
               </Field>
               <Field label="Tanggal acara" error={errors.eventDate?.message}>
                 <Input type="date" aria-invalid={!!errors.eventDate} {...register('eventDate')} />
               </Field>
             </div>
-          </div>
-          <div>
-            <span className="mb-1.5 block text-sm font-semibold">Kategori</span>
-            <Controller
-              control={control}
-              name="orderCategory"
-              render={({ field }) => (
-                <Segmented
-                  label="Kategori pesanan"
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={[...CATEGORIES]}
-                />
-              )}
-            />
-          </div>
-          <Field label="Lokasi acara" error={errors.eventLocation?.message}>
-            <Input aria-invalid={!!errors.eventLocation} {...register('eventLocation')} />
-          </Field>
-          <div>
-            <h2 className="mb-3 text-base font-bold">Menu Pesanan</h2>
+            <div>
+              <span className="mb-1.5 block text-xs font-medium text-slate-700">
+                Kategori acara
+              </span>
+              <Controller
+                control={control}
+                name="orderCategory"
+                render={({ field }) => (
+                  <Segmented
+                    label="Kategori pesanan"
+                    size="md"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={[...CATEGORIES]}
+                  />
+                )}
+              />
+            </div>
+            <Field label="Lokasi acara" error={errors.eventLocation?.message}>
+              <Input
+                placeholder="Contoh: Gedung Graha Malang"
+                aria-invalid={!!errors.eventLocation}
+                {...register('eventLocation')}
+              />
+            </Field>
+          </Card>
+
+          <Card className="overflow-hidden p-0">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Menu Pesanan</h2>
+                <p className="text-xs text-slate-500">
+                  Pilih menu dan jumlah porsi terkonfirmasi untuk dipecah ke resep bahan (BOM).
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => append({ menuId: '', confirmedPortions: 500 })}
+              >
+                + Tambah menu
+              </Button>
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left">
-                <thead className="text-sm text-n-700">
+              <table className="w-full min-w-[480px] text-left">
+                <thead className="border-b border-slate-100 bg-slate-50/70 text-xs font-medium text-slate-500">
                   <tr>
-                    <th scope="col" className="pb-2 pr-3 font-semibold">
+                    <th scope="col" className="px-5 py-2.5">
                       Menu
                     </th>
-                    <th scope="col" className="w-36 pb-2 pr-3 font-semibold">
+                    <th scope="col" className="w-40 px-3 py-2.5">
                       Porsi
                     </th>
-                    <th scope="col" className="w-28 pb-2 font-semibold">
+                    <th scope="col" className="w-24 px-5 py-2.5 text-right">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {fields.map((f, i) => (
-                    <tr key={f.id} className="border-t border-n-100">
-                      <td className="py-2 pr-3 align-top">
+                    <tr key={f.id} className="align-top">
+                      <td className="px-5 py-3">
                         <Select
                           aria-label={`Menu pesanan ${i + 1}`}
                           aria-invalid={!!errors.items?.[i]?.menuId}
@@ -146,29 +176,31 @@ export function OrderFormPage() {
                           ))}
                         </Select>
                         {errors.items?.[i]?.menuId?.message && (
-                          <p className="mt-1 text-xs font-semibold text-error-strong">
+                          <p className="mt-1 text-xs font-medium text-rose-600">
                             {errors.items[i].menuId.message}
                           </p>
                         )}
                       </td>
-                      <td className="py-2 pr-3 align-top">
+                      <td className="px-3 py-3">
                         <Input
                           aria-label={`Porsi menu ${i + 1}`}
                           aria-invalid={!!errors.items?.[i]?.confirmedPortions}
                           type="number"
                           min={1}
+                          className="text-right tabular-nums"
                           {...register(`items.${i}.confirmedPortions`, { valueAsNumber: true })}
                         />
                         {errors.items?.[i]?.confirmedPortions?.message && (
-                          <p className="mt-1 text-xs font-semibold text-error-strong">
+                          <p className="mt-1 text-xs font-medium text-rose-600">
                             {errors.items[i].confirmedPortions.message}
                           </p>
                         )}
                       </td>
-                      <td className="py-2 align-top">
+                      <td className="px-5 py-3 text-right">
                         <Button
                           type="button"
-                          variant="danger"
+                          variant="dangerSoft"
+                          size="sm"
                           onClick={() => remove(i)}
                           disabled={fields.length === 1}
                           aria-label={`Hapus ${MENU_OPTIONS.find((m) => m.id === watch(`items.${i}.menuId`))?.name ?? `menu ${i + 1}`}`}
@@ -182,43 +214,47 @@ export function OrderFormPage() {
               </table>
             </div>
             {errors.items?.root?.message && (
-              <p className="mt-2 text-xs font-semibold text-error-strong">
+              <p className="px-5 pb-3 text-xs font-medium text-rose-600">
                 {errors.items.root.message}
               </p>
             )}
-            <Button
-              type="button"
-              className="mt-3"
-              onClick={() => append({ menuId: '', confirmedPortions: 500 })}
-            >
-              + Tambah menu
-            </Button>
+          </Card>
+        </div>
+
+        <Card className="flex flex-col gap-4 lg:sticky lg:top-20">
+          <h2 className="text-sm font-semibold text-slate-900">Ringkasan Pesanan</h2>
+          <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-3.5">
+            <p className="text-xs text-slate-500">Total porsi terkonfirmasi</p>
+            <p className="mt-0.5 font-display text-2xl font-bold text-slate-900 tabular-nums">
+              {total.toLocaleString('id-ID')}
+              <span className="ml-1.5 text-xs font-medium text-slate-500">porsi</span>
+            </p>
           </div>
-        </Card>
-        <Card className="flex flex-col gap-3 lg:sticky lg:top-5">
-          <h2 className="text-base font-bold">Ringkasan</h2>
-          <div>
-            <p className="text-sm text-n-700">Total porsi</p>
-            <p className="font-display text-base font-bold">{total.toLocaleString('id-ID')}</p>
+          <div className="space-y-2.5 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-500">Jumlah menu</span>
+              <span className="font-medium text-slate-900 tabular-nums">{fields.length} item</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-500">Status</span>
+              <Tag tone={save.isSuccess ? 'success' : 'neutral'} dot>
+                {save.isSuccess ? 'Terkonfirmasi' : 'Siap disimpan'}
+              </Tag>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-500">Versi</span>
+              <span className="font-medium text-slate-900 tabular-nums">
+                {save.data ? `v${save.data.version}` : 'Baru'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm text-n-700">Status</span>
-            <Tag tone={save.isSuccess ? 'success' : 'neutral'}>
-              {save.isSuccess ? 'Terkonfirmasi' : 'Siap disimpan'}
-            </Tag>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm text-n-700">Versi</span>
-            <span className="text-sm font-semibold">
-              {save.data ? `v${save.data.version}` : 'Versi baru'}
-            </span>
-          </div>
-          <p className="text-sm text-n-700">
-            Setelah disimpan, PPIC dapat menggunakan pesanan ini untuk menghitung kebutuhan bahan.
+          <p className="border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500">
+            Setelah disimpan, pesanan otomatis masuk ke perhitungan kebutuhan bahan PPIC pada minggu
+            tanggal acara.
           </p>
           {save.isSuccess && (
             <Alert tone="success" title="Pesanan tersimpan">
-              Nomor {save.data.orderId}, versi {save.data.version}.
+              Nomor {save.data.orderId} (versi {save.data.version}).
             </Alert>
           )}
           {save.isError && (
@@ -226,8 +262,14 @@ export function OrderFormPage() {
               {errorMessage(save.error)}
             </Alert>
           )}
-          <Button type="submit" variant="primary" size="lg" disabled={save.isPending}>
-            {save.isPending ? 'Menyimpan' : 'Simpan pesanan'}
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            disabled={save.isPending}
+            className="w-full"
+          >
+            {save.isPending ? 'Menyimpan...' : 'Simpan pesanan'}
           </Button>
         </Card>
       </form>

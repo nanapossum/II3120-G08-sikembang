@@ -1,52 +1,32 @@
 /*
- * Design tokens SIkembang. Sumber tunggal untuk warna, tipografi, dan radius.
- * Aturan desain: ukuran teks hanya 12/14/16 px, radius hanya 8/12/16 px, dominan netral,
- * highlight tombol memakai fill kontras tinggi (bukan stroke).
- * Token bertanda "turunan" bukan dari palet asli: dipakai untuk tint latar status dan teks kecil
- * yang butuh kontras AA.
+ * Design tokens SiKembang — Modern Minimalist SaaS System.
+ * Kanvas abu-abu lembut (#FAFAFA), kartu putih bersih (#FFFFFF), border tipis (#E5E7EB),
+ * dan aksen maroon (#881337) khusus untuk CTA primer & indikator aktif.
  */
 @theme {
-  --color-*: initial;
-  --color-white: #ffffff;
-  --color-primary: #892c3e;
-  --color-primary-a: #be5478;
-  --color-primary-b: #fea3b4;
-  --color-accent-a: #a1bf77;
-  --color-accent-b: #3b5b2a;
+  --color-brand: #881337;
+  --color-brand-hover: #9f1239;
+  --color-brand-soft: #fff1f2;
+  --color-brand-border: #fecdd3;
+
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-line: #e5e7eb;
+
+  /* Alias semantik untuk konsistensi di seluruh aplikasi */
+  --color-primary: #881337;
+  --color-primary-soft: #fff1f2;
   --color-n-0: #ffffff;
-  --color-n-50: #f9f9f9;
-  --color-n-100: #dddddd;
-  --color-n-200: #d1d1d1;
-  --color-n-300: #b2b2b2;
-  --color-n-500: #777777;
-  --color-n-700: #4f4f4f;
-  --color-n-900: #282828;
-  --color-info: #414fcb;
-  --color-error: #db471e;
-  --color-success: #188977;
-  --color-warning: #f5a524;
-  /* turunan */
-  --color-primary-soft: #f7e3e8;
-  --color-info-soft: #e3e5f8;
-  --color-success-soft: #ddf0ec;
-  --color-warning-soft: #fdebc8;
-  --color-error-soft: #fbe3dc;
-  --color-error-strong: #a5330f;
-  --color-success-strong: #0f6153;
+  --color-n-50: #fafafa;
+  --color-n-100: #f1f5f9;
+  --color-n-200: #e2e8f0;
+  --color-n-500: #64748b;
+  --color-n-700: #475569;
+  --color-n-900: #0f172a;
+  --color-error-strong: #be123c;
+  --color-success-strong: #047857;
+  --color-info: #4338ca;
 
-  --font-sans: 'Open Sans', system-ui, sans-serif;
-  --font-display: 'Figtree Variable', system-ui, sans-serif;
-
-  --text-*: initial;
-  --text-xs: 12px;
-  --text-xs--line-height: 16px;
-  --text-sm: 14px;
-  --text-sm--line-height: 20px;
-  --text-base: 16px;
-  --text-base--line-height: 24px;
-
-  --radius-*: initial;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --font-sans: 'Inter', 'Open Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', 'Figtree Variable', system-ui, sans-serif;
 }

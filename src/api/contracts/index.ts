@@ -68,9 +68,18 @@ const CalculatedLine = z.object({
   system_net_recommendation: Quantity,
 })
 const ListIdentity = z.object({ list_id: z.string(), planning_period: z.string() })
+export const ForecastContext = z.object({
+  model_version: z.string(),
+  season_flags: z.record(z.string(), z.boolean()),
+  active_seasons: z.array(z.string()),
+  drivers: z.array(z.string()),
+  feedback_applied_count: z.number().int().nonnegative(),
+  source: z.string(),
+})
 const DraftMetadata = ListIdentity.extend({
   created_at: z.string(),
   forecast_run_id: z.string().nullable(),
+  forecast_context: ForecastContext.nullish(),
   warnings: z.array(z.object({ code: z.string(), ingredient_id: z.string(), message: z.string() })),
 })
 export const CalculateRes = DraftMetadata.extend({
