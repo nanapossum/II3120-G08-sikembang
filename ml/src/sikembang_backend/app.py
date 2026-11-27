@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from ai_forecast.api import create_router
@@ -56,6 +57,14 @@ def create_app(settings: Settings | None = None, *, clock: Callable[[], datetime
             engine.dispose()
 
     app = FastAPI(title="SiKembang API", version="0.6.0", lifespan=lifespan)
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(settings.cors_origins),
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     install_handlers(app)
     sessions = session_factory(engine)
     auth = Auth(sessions, settings.jwt_secret.get_secret_value())

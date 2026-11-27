@@ -15,5 +15,6 @@ ml/generated/
 ml/artifacts/
 ml/runtime/
 firmware/esp32_scale/secrets.h
+firmware/esp32_sikembang/secrets.h
 .github/workflows/copilot-instructions.md
 docs/wireframe-spec.md
